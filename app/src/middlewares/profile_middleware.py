@@ -14,6 +14,17 @@ from sqlalchemy.exc import IntegrityError
 from src.core.database import get_session
 from src.databases.user_profiles import UserProfile
 from src.context.messages.profileMiddleware.enterName import get_message as get_enter_name_message
+from src.context.messages.profileMiddleware.invalidName import get_message as get_invalid_name_message
+from src.context.messages.profileMiddleware.chooseGender import get_message as get_choose_gender_message
+from src.context.messages.profileMiddleware.invalidGender import get_message as get_invalid_gender_message
+from src.context.messages.profileMiddleware.chooseAge import get_message as get_choose_age_message
+from src.context.messages.profileMiddleware.invalidAge import get_message as get_invalid_age_message
+from src.context.messages.profileMiddleware.invalidAgeRange import get_message as get_invalid_age_range_message
+from src.context.messages.profileMiddleware.chooseState import get_message as get_choose_state_message
+from src.context.messages.profileMiddleware.invalidState import get_message as get_invalid_state_message
+from src.context.messages.profileMiddleware.chooseCity import get_message as get_choose_city_message
+from src.context.messages.profileMiddleware.invalidCity import get_message as get_invalid_city_message
+from src.context.messages.profileMiddleware.profileCompleted import get_message as get_profile_completed_message
 from src.databases.users import User
 from src.databases.states import State
 from src.databases.cities import City
@@ -76,7 +87,7 @@ class ProfileMiddleware(BaseMiddleware):
 					await event.answer(get_enter_name_message())
 					return None
 				if not text:
-					await event.answer("نام معتبر وارد کنید:")
+					await event.answer(get_invalid_name_message())
 					return None
 				profile.name = text
 				user.step = "ask_gender"
@@ -86,7 +97,7 @@ class ProfileMiddleware(BaseMiddleware):
 					resize_keyboard=True,
 					one_time_keyboard=True,
 				)
-				await event.answer("جنسیت خود را انتخاب کنید:", reply_markup=keyboard)
+				await event.answer(get_choose_gender_message(), reply_markup=keyboard)
 				return None
 
 			# Step 2: gender
@@ -99,7 +110,7 @@ class ProfileMiddleware(BaseMiddleware):
 						resize_keyboard=True,
 						one_time_keyboard=True,
 					)
-					await event.answer("جنسیت خود را انتخاب کنید:", reply_markup=keyboard)
+					await event.answer(get_choose_gender_message(), reply_markup=keyboard)
 					return None
 				normalized = text.lower()
 				if normalized in {"زن", "زنانه", "female", "f"}:
@@ -107,7 +118,7 @@ class ProfileMiddleware(BaseMiddleware):
 				elif normalized in {"مرد", "آقا", "male", "m"}:
 					profile.is_female = False
 				else:
-					await event.answer("پاسخ نامعتبر. ‘زن’ یا ‘مرد’ را انتخاب کنید.")
+					await event.answer(get_invalid_gender_message())
 					return None
 				# Next: ask age
 				user.step = "ask_age"
@@ -122,7 +133,7 @@ class ProfileMiddleware(BaseMiddleware):
 				if row:
 					rows.append(row)
 				kb = ReplyKeyboardMarkup(keyboard=rows, resize_keyboard=True)
-				await event.answer("سن خود را انتخاب کنید:", reply_markup=kb)
+				await event.answer(get_choose_age_message(), reply_markup=kb)
 				return None
 
 			# Step 3: age
@@ -140,14 +151,14 @@ class ProfileMiddleware(BaseMiddleware):
 					if row:
 						rows.append(row)
 					kb = ReplyKeyboardMarkup(keyboard=rows, resize_keyboard=True)
-					await event.answer("سن خود را انتخاب کنید:", reply_markup=kb)
+					await event.answer(get_choose_age_message(), reply_markup=kb)
 					return None
 				if not text.isdigit():
-					await event.answer("لطفاً یک عدد بین 1 تا 99 انتخاب کنید.")
+					await event.answer(get_invalid_age_message())
 					return None
 				age_val = int(text)
 				if age_val < 1 or age_val > 99:
-					await event.answer("عدد وارد شده باید بین 1 تا 99 باشد.")
+					await event.answer(get_invalid_age_range_message())
 					return None
 				profile.age = age_val
 				user.step = "ask_state"
@@ -168,7 +179,7 @@ class ProfileMiddleware(BaseMiddleware):
 				if row:
 					rows.append(row)
 				kb = ReplyKeyboardMarkup(keyboard=rows, resize_keyboard=True)
-				await event.answer("استان خود را انتخاب کنید:", reply_markup=kb)
+				await event.answer(get_choose_state_message(), reply_markup=kb)
 				return None
 
 			# Step 4: state
@@ -188,14 +199,14 @@ class ProfileMiddleware(BaseMiddleware):
 					if row:
 						rows.append(row)
 					kb = ReplyKeyboardMarkup(keyboard=rows, resize_keyboard=True)
-					await event.answer("استان خود را انتخاب کنید:", reply_markup=kb)
+					await event.answer(get_choose_state_message(), reply_markup=kb)
 					return None
 				# Match state
 				state: State | None = await session.scalar(
 					select(State).where(State.state_name == text)
 				)
 				if state is None:
-					await event.answer("استان نامعتبر است. از لیست انتخاب کنید.")
+					await event.answer(get_invalid_state_message())
 					return None
 				profile.state = state.id
 				user.step = "ask_city"
@@ -221,7 +232,7 @@ class ProfileMiddleware(BaseMiddleware):
 				if row:
 					rows.append(row)
 				kb = ReplyKeyboardMarkup(keyboard=rows, resize_keyboard=True)
-				await event.answer("شهر خود را انتخاب کنید:", reply_markup=kb)
+				await event.answer(get_choose_city_message(), reply_markup=kb)
 				return None
 
 			# Step 4: city
@@ -229,7 +240,7 @@ class ProfileMiddleware(BaseMiddleware):
 				if user.step != "ask_city":
 					user.step = "ask_city"
 					await session.commit()
-					await event.answer("شهر خود را انتخاب کنید:")
+					await event.answer(get_choose_city_message())
 					return None
 				state_id = profile.state
 				if not state_id:
@@ -239,12 +250,12 @@ class ProfileMiddleware(BaseMiddleware):
 					select(City).where(City.state_id == state_id, City.city_name == text)
 				)
 				if city is None:
-					await event.answer("شهر نامعتبر است. از لیست انتخاب کنید.")
+					await event.answer(get_invalid_city_message())
 					return None
 				profile.city = city.id
 				user.step = "start"
 				await session.commit()
-				await event.answer("پروفایل تکمیل شد.", reply_markup=ReplyKeyboardRemove())
+				await event.answer(get_profile_completed_message(), reply_markup=ReplyKeyboardRemove())
 				data["profile_ok"] = True
 				return await handler(event, data)
 

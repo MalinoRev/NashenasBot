@@ -32,7 +32,8 @@ dist/
 *.egg-info/
 
 # Data volumes
-/data/
+mysql_data/
+redis_data/
 
 # Docker
 # Ignore local override files if created
