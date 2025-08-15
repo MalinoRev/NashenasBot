@@ -38,6 +38,31 @@ async def seed_all() -> None:
         seed_cities_state_4,
         seed_cities_state_5,
         seed_cities_state_6,
+        seed_cities_state_7,
+        seed_cities_state_8,
+        seed_cities_state_9,
+        seed_cities_state_10,
+        seed_cities_state_11,
+        seed_cities_state_12,
+        seed_cities_state_13,
+        seed_cities_state_14,
+        seed_cities_state_15,
+        seed_cities_state_16,
+        seed_cities_state_17,
+        seed_cities_state_18,
+        seed_cities_state_19,
+        seed_cities_state_20,
+        seed_cities_state_21,
+        seed_cities_state_22,
+        seed_cities_state_23,
+        seed_cities_state_24,
+        seed_cities_state_25,
+        seed_cities_state_26,
+        seed_cities_state_27,
+        seed_cities_state_28,
+        seed_cities_state_29,
+        seed_cities_state_30,
+        seed_cities_state_31,
     )
 
     await seed_states()
@@ -47,6 +72,31 @@ async def seed_all() -> None:
     await seed_cities_state_4()
     await seed_cities_state_5()
     await seed_cities_state_6()
+    await seed_cities_state_7()
+    await seed_cities_state_8()
+    await seed_cities_state_9()
+    await seed_cities_state_10()
+    await seed_cities_state_11()
+    await seed_cities_state_12()
+    await seed_cities_state_13()
+    await seed_cities_state_14()
+    await seed_cities_state_15()
+    await seed_cities_state_16()
+    await seed_cities_state_17()
+    await seed_cities_state_18()
+    await seed_cities_state_19()
+    await seed_cities_state_20()
+    await seed_cities_state_21()
+    await seed_cities_state_22()
+    await seed_cities_state_23()
+    await seed_cities_state_24()
+    await seed_cities_state_25()
+    await seed_cities_state_26()
+    await seed_cities_state_27()
+    await seed_cities_state_28()
+    await seed_cities_state_29()
+    await seed_cities_state_30()
+    await seed_cities_state_31()
 
 
 def main() -> None:
