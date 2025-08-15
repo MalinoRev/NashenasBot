@@ -1,0 +1,91 @@
+version: "3.9"
+
+services:
+  bot:
+    build:
+      context: .
+      dockerfile: docker/bot/Dockerfile
+    container_name: nashenas-bot
+    env_file:
+      - .env
+    environment:
+      - BOT_MODE=${BOT_MODE:-polling}
+      - BOT_WEBHOOK_PORT=${BOT_WEBHOOK_PORT:-8080}
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_WEBHOOK_URL=${TELEGRAM_WEBHOOK_URL}
+      - TELEGRAM_WEBHOOK_SECRET=${TELEGRAM_WEBHOOK_SECRET}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "${BOT_WEBHOOK_PORT:-8080}:8080"
+    volumes:
+      - ./app:/app
+    restart: unless-stopped
+    networks:
+      - backend
+
+  mysql:
+    build:
+      context: .
+      dockerfile: docker/mysql/Dockerfile
+    container_name: nashenas-mysql
+    env_file:
+      - .env
+    ports:
+      - "20102:3306"
+    volumes:
+      - ./data/mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
+    networks:
+      - backend
+
+  redis:
+    build:
+      context: .
+      dockerfile: docker/redis/Dockerfile
+    container_name: nashenas-redis
+    ports:
+      - "20103:6379"
+    volumes:
+      - ./data/redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 50
+    restart: unless-stopped
+    networks:
+      - backend
+
+  phpmyadmin:
+    build:
+      context: .
+      dockerfile: docker/phpmyadmin/Dockerfile
+    container_name: nashenas-phpmyadmin
+    environment:
+      - PMA_HOST=${DATABASE_HOST}
+      - PMA_PORT=${DATABASE_PORT}
+      - UPLOAD_LIMIT=256M
+    ports:
+      - "20104:80"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - backend
+
+networks:
+  backend:
+
+
