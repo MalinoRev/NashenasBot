@@ -7,6 +7,12 @@ from . import Base, engine
 # Import models so they register on Base.metadata
 import src.databases.states  # noqa: F401
 import src.databases.users  # noqa: F401
+import src.databases.cities  # noqa: F401
+import src.databases.user_profiles  # noqa: F401
+import src.databases.user_locations  # noqa: F401
+import src.databases.user_settings  # noqa: F401
+import src.databases.user_filters  # noqa: F401
+import src.databases.user_bans  # noqa: F401
 
 
 Action = Literal["create", "drop", "recreate"]
