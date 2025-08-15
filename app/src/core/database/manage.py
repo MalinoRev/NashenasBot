@@ -31,8 +31,22 @@ async def drop_all() -> None:
 async def seed_all() -> None:
     # Import and run seeds here
     from src.databases.seeds import seed_states
+    from src.databases.seeds.cities import (
+        seed_cities_state_1,
+        seed_cities_state_2,
+        seed_cities_state_3,
+        seed_cities_state_4,
+        seed_cities_state_5,
+        seed_cities_state_6,
+    )
 
     await seed_states()
+    await seed_cities_state_1()
+    await seed_cities_state_2()
+    await seed_cities_state_3()
+    await seed_cities_state_4()
+    await seed_cities_state_5()
+    await seed_cities_state_6()
 
 
 def main() -> None:
