@@ -13,6 +13,7 @@ from sqlalchemy.exc import IntegrityError
 
 from src.core.database import get_session
 from src.databases.user_profiles import UserProfile
+from src.context.messages.profileMiddleware.enterName import get_message as get_enter_name_message
 from src.databases.users import User
 from src.databases.states import State
 from src.databases.cities import City
@@ -41,8 +42,7 @@ class ProfileMiddleware(BaseMiddleware):
 			data["profile_ok"] = False
 			return None
 
-		# Interactive profile completion flo
-  # w (messages only)
+		# Interactive profile completion flow (messages only)
 		if isinstance(event, CallbackQuery):
 			# Skip profile prompts on callbacks; let handlers manage
 			data["profile_ok"] = True
@@ -65,7 +65,7 @@ class ProfileMiddleware(BaseMiddleware):
 				session.add(profile)
 				user.step = "ask_name"
 				await session.commit()
-				await event.answer("لطفاً نام خود را وارد کنید:")
+				await event.answer(get_enter_name_message())
 				return None
 
 			# Step 1: name
@@ -73,7 +73,7 @@ class ProfileMiddleware(BaseMiddleware):
 				if user.step != "ask_name":
 					user.step = "ask_name"
 					await session.commit()
-					await event.answer("لطفاً نام خود را وارد کنید:")
+					await event.answer(get_enter_name_message())
 					return None
 				if not text:
 					await event.answer("نام معتبر وارد کنید:")
