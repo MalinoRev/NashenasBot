@@ -1,0 +1,68 @@
+import secrets
+import string
+from typing import Any, Callable, Dict, Optional
+
+from aiogram import BaseMiddleware
+from aiogram.types import CallbackQuery, Message
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
+
+from src.core.database import get_session
+from src.databases.users import User
+
+
+class AuthMiddleware(BaseMiddleware):
+	async def __call__(
+		self,
+		handler: Callable[[Any, Dict[str, Any]], Any],
+		event: Message | CallbackQuery,
+		data: Dict[str, Any],
+	) -> Any:
+		user_id: Optional[int] = None
+		tg_name: Optional[str] = None
+
+		if isinstance(event, Message):
+			if event.from_user:
+				user_id = event.from_user.id
+				tg_name = event.from_user.username or event.from_user.full_name
+		elif isinstance(event, CallbackQuery):
+			if event.from_user:
+				user_id = event.from_user.id
+				tg_name = event.from_user.username or event.from_user.full_name
+
+		# Authenticate: ensure user exists; create if missing
+		if not user_id:
+			data["auth_ok"] = False
+			return None
+
+		async with get_session() as session:
+			existing_id = await session.scalar(select(User.id).where(User.user_id == user_id))
+			if existing_id:
+				data["auth_ok"] = True
+				return await handler(event, data)
+
+		# Create new user record
+		alphabet = string.ascii_letters + string.digits
+		uid = "".join(secrets.choice(alphabet) for _ in range(12))
+		ref_id = "".join(secrets.choice(alphabet) for _ in range(12))
+		name_value = tg_name or ""
+		new_user = User(
+			user_id=user_id,
+			tg_name=name_value,
+			unique_id=uid,
+			referral_id=ref_id,
+			step="start",
+		)
+		try:
+			async with get_session() as session2:
+				session2.add(new_user)
+				await session2.commit()
+		except IntegrityError:
+			# Concurrent create; consider authenticated
+			data["auth_ok"] = True
+			return await handler(event, data)
+		# Created successfully
+		data["auth_ok"] = True
+		return await handler(event, data)
+
+

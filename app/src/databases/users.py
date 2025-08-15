@@ -18,7 +18,7 @@ class User(Base):
 	credit: Mapped[int] = mapped_column(BigInteger, nullable=False, server_default="0")
 	chat_counter: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
 	unique_id: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=False)
-	referral_id: Mapped[str | None] = mapped_column(String(255), nullable=False)
+	referral_id: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=False)
 	referraled_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("users.id"), nullable=True)
 	last_activity: Mapped[DateTime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
 	step: Mapped[str | None] = mapped_column(String(255), nullable=False)
