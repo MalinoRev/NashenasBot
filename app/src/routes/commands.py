@@ -165,6 +165,15 @@ async def help_delete_message_command(message: Message) -> None:
 	return
 
 
+@router.message(Command("help_search"))
+async def help_search_command(message: Message) -> None:
+	from src.handlers.commands.help_search import handle_help_search
+
+	result = await handle_help_search()
+	await message.answer(result.get("text", ""))
+	return
+
+
 @router.message(Command("help_shortcuts"))
 async def help_shortcuts_command(message: Message) -> None:
 	from src.handlers.commands.help_shortcuts import handle_help_shortcuts
