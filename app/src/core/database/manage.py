@@ -13,6 +13,7 @@ import src.databases.user_locations  # noqa: F401
 import src.databases.user_settings  # noqa: F401
 import src.databases.user_filters  # noqa: F401
 import src.databases.user_bans  # noqa: F401
+import src.databases.requested_channels  # noqa: F401
 
 
 Action = Literal["create", "drop", "recreate"]
