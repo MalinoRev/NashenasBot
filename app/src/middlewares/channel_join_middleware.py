@@ -17,14 +17,20 @@ class ChannelJoinMiddleware(BaseMiddleware):
 		event: Message | CallbackQuery,
 		data: Dict[str, Any],
 	) -> Any:
-		# Should run after auth/profile; if those failed, skip
+		# Require auth to be OK first
 		if not data.get("auth_ok", False):
 			return None
-		# Profile middleware may block commands until completion, but we still enforce channels after profile is OK
-		# For callbacks, let specific handlers manage flow; enforce only on messages for now
-		if isinstance(event, CallbackQuery):
-			return await handler(event, data)
 
+		# Resolve Telegram user id
+		user_id: Optional[int] = None
+		if isinstance(event, Message):
+			user_id = event.from_user.id if event.from_user else None
+		elif isinstance(event, CallbackQuery):
+			user_id = event.from_user.id if event.from_user else None
+		if not user_id:
+			return None
+
+		# Load required channels
 		async with get_session() as session:
 			channels: List[RequestedChannel] = list(
 				await session.scalars(select(RequestedChannel).order_by(RequestedChannel.id))
@@ -32,9 +38,38 @@ class ChannelJoinMiddleware(BaseMiddleware):
 			if not channels:
 				return await handler(event, data)
 
-			# Build inline keyboard via context builder
-			markup = build_channel_join_kb([c.channel_id for c in channels])
+		# Bot instance for membership checks
+		bot = data.get("bot")
+		if bot is None:
+			return await handler(event, data)
 
-			# Send prompt and stop further processing
-			await event.answer(get_required_message(), reply_markup=markup)
-			return None
+		# Verify membership in all channels
+		not_joined: List[str] = []
+		for ch in channels:
+			chat_identifier = f"@{ch.channel_id}" if not str(ch.channel_id).startswith("@") else str(ch.channel_id)
+			try:
+				member = await bot.get_chat_member(chat_identifier, user_id)
+				status = getattr(member, "status", None)
+				if status not in {"creator", "administrator", "member"}:
+					not_joined.append(str(ch.channel_id))
+			except Exception:
+				# If check fails, assume not joined
+				not_joined.append(str(ch.channel_id))
+
+		if not not_joined:
+			return await handler(event, data)
+
+		# Build prompt and keyboard
+		markup = build_channel_join_kb([c for c in not_joined])
+		text = get_required_message()
+
+		# Send prompt depending on event type
+		if isinstance(event, Message):
+			await event.answer(text, reply_markup=markup)
+		else:
+			if event.message:
+				await event.message.answer(text, reply_markup=markup)
+			else:
+				# Fallback: show alert
+				await event.answer(text, show_alert=True)
+		return None
