@@ -112,6 +112,15 @@ async def help_direct_command(message: Message) -> None:
 		return
 
 
+@router.message(Command("help_shortcuts"))
+async def help_shortcuts_command(message: Message) -> None:
+	from src.handlers.commands.help_shortcuts import handle_help_shortcuts
+
+	result = await handle_help_shortcuts()
+	await message.answer(result.get("text", ""))
+	return
+
+
 # Optional: catch-all for any other command (text starting with "/")
 @router.message(F.text.startswith("/"))
 async def unknown_command(message: Message) -> None:
