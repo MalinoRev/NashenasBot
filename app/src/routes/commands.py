@@ -112,6 +112,19 @@ async def help_direct_command(message: Message) -> None:
 		return
 
 
+@router.message(Command("help_terms"))
+async def help_terms_command(message: Message) -> None:
+	from src.handlers.commands.help_terms import handle_help_terms
+
+	result = await handle_help_terms()
+	photo_path = result.get("photo_path")
+	caption = result.get("caption")
+	if photo_path and caption:
+		photo = FSInputFile(photo_path)
+		await message.answer_photo(photo, caption=caption)
+		return
+
+
 @router.message(Command("help_shortcuts"))
 async def help_shortcuts_command(message: Message) -> None:
 	from src.handlers.commands.help_shortcuts import handle_help_shortcuts
