@@ -25,6 +25,15 @@ async def start_command(message: Message) -> None:
 	)
 
 
+@router.message(Command("help"))
+async def help_command(message: Message) -> None:
+	from src.handlers.commands.help import handle_help
+
+	result = await handle_help()
+	await message.answer(result.get("text", ""))
+	return
+
+
 @router.message(Command("help_chat"))
 async def help_chat_command(message: Message) -> None:
 	from src.handlers.commands.help_chat import handle_help_chat
