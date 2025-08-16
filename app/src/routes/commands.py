@@ -1,6 +1,6 @@
 from aiogram import Router, F
 from aiogram.filters import Command, CommandStart
-from aiogram.types import Message, LinkPreviewOptions
+from aiogram.types import Message, LinkPreviewOptions, FSInputFile
 
 
 router = Router(name="commands")
@@ -23,6 +23,19 @@ async def start_command(message: Message) -> None:
 		parse_mode="Markdown",
 		link_preview_options=LinkPreviewOptions(is_disabled=True),
 	)
+
+
+@router.message(Command("help_chat"))
+async def help_chat_command(message: Message) -> None:
+	from src.handlers.commands.help_chat import handle_help_chat
+
+	result = await handle_help_chat()
+	photo_path = result.get("photo_path")
+	caption = result.get("caption")
+	if photo_path and caption:
+		photo = FSInputFile(photo_path)
+		await message.answer_photo(photo, caption=caption)
+		return
 
 
 # Optional: catch-all for any other command (text starting with "/")
