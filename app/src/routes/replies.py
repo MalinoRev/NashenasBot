@@ -1,6 +1,6 @@
 from aiogram import Router
 from aiogram.filters import Command
-from aiogram.types import Message
+from aiogram.types import Message, FSInputFile
 from src.context.keyboards.reply.mainButtons import resolve_id_from_text as resolve_main_id
 
 
@@ -40,6 +40,22 @@ async def handle_text_reply(message: Message) -> None:
 		# Send second message
 		if result.get("text2"):
 			await message.answer(result.get("text2"))
+		return
+
+	if main_id == "main:invite":
+		from src.handlers.replies.invite import handle_invite
+
+		user_id = message.from_user.id if message.from_user else 0
+		result = await handle_invite(user_id)
+		# Send photo with caption first
+		photo_path = result.get("photo_path")
+		caption = result.get("caption")
+		if photo_path and caption:
+			photo = FSInputFile(photo_path)
+			await message.answer_photo(photo, caption=caption)
+		# Then send second text message if any
+		if result.get("text"):
+			await message.answer(result.get("text"))
 		return
 
 	await message.answer("Text received, delegating to replies or default.")

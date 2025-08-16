@@ -91,6 +91,18 @@ class ProfileMiddleware(BaseMiddleware):
 				select(UserProfile).where(UserProfile.user_id == user.id)
 			)
 
+			# Early allow: if profile exists and all fields are filled, pass through immediately
+			if (
+				profile is not None
+				and profile.name is not None
+				and profile.is_female is not None
+				and profile.age is not None
+				and profile.state is not None
+				and profile.city is not None
+			):
+				data["profile_ok"] = True
+				return await handler(event, data)
+
 			# If a command is sent while profile is not complete, block it
 			if text.startswith("/"):
 				incomplete = (
@@ -100,7 +112,6 @@ class ProfileMiddleware(BaseMiddleware):
 					or profile.age is None
 					or profile.state is None
 					or profile.city is None
-					or (getattr(user, "step", "start") != "start")
 				)
 				if incomplete:
 					# Special case: if profile does not exist yet, start the flow without sending invalid-command
@@ -148,15 +159,14 @@ class ProfileMiddleware(BaseMiddleware):
 			if profile is None:
 				profile = UserProfile(user_id=user.id)
 				session.add(profile)
-				user.step = "ask_name"
 				await session.commit()
 				await event.answer(get_enter_name_message(), reply_markup=ReplyKeyboardRemove())
 				return None
 
 			# Step 1: name
 			if profile.name is None:
-				if user.step != "ask_name":
-					user.step = "ask_name"
+				if getattr(user, "step", "ask_name") != "ask_name":
+					setattr(user, "step", "ask_name")
 					await session.commit()
 					await event.answer(get_enter_name_message(), reply_markup=ReplyKeyboardRemove())
 					return None
@@ -177,8 +187,8 @@ class ProfileMiddleware(BaseMiddleware):
 
 			# Step 2: gender
 			if profile.is_female is None:
-				if user.step != "ask_gender":
-					user.step = "ask_gender"
+				if getattr(user, "step", "ask_gender") != "ask_gender":
+					setattr(user, "step", "ask_gender")
 					await session.commit()
 					gender_kb, _ = build_gender_kb()
 					await event.answer(get_choose_gender_message(), reply_markup=gender_kb)
@@ -203,8 +213,8 @@ class ProfileMiddleware(BaseMiddleware):
 
 			# Step 3: age
 			if profile.age is None:
-				if user.step != "ask_age":
-					user.step = "ask_age"
+				if getattr(user, "step", "ask_age") != "ask_age":
+					setattr(user, "step", "ask_age")
 					await session.commit()
 					age_kb, _ = build_age_kb()
 					await event.answer(get_choose_age_message(), reply_markup=age_kb)
@@ -268,8 +278,8 @@ class ProfileMiddleware(BaseMiddleware):
 
 			# Step 4: state
 			if profile.state is None:
-				if user.step != "ask_state":
-					user.step = "ask_state"
+				if getattr(user, "step", "ask_state") != "ask_state":
+					setattr(user, "step", "ask_state")
 					await session.commit()
 					# Re-show states
 					states: List[State] = list(await session.scalars(select(State).order_by(State.state_name)))
@@ -312,8 +322,8 @@ class ProfileMiddleware(BaseMiddleware):
 
 			# Step 4: city
 			if profile.city is None:
-				if user.step != "ask_city":
-					user.step = "ask_city"
+				if getattr(user, "step", "ask_city") != "ask_city":
+					setattr(user, "step", "ask_city")
 					await session.commit()
 					await event.answer(get_choose_city_message(), reply_markup=ReplyKeyboardRemove())
 					return None
@@ -343,7 +353,7 @@ class ProfileMiddleware(BaseMiddleware):
 					await event.answer(get_invalid_city_message(), reply_markup=city_kb3)
 					return None
 				profile.city = city.id
-				user.step = "start"
+				setattr(user, "step", "start")
 				await session.commit()
 				# Send profile completed with main buttons
 				main_kb, _ = build_main_kb()
