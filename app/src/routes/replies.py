@@ -44,8 +44,17 @@ async def handle_text_reply(message: Message) -> None:
 
 	if main_id == "main:invite":
 		from src.handlers.replies.invite import handle_invite
+		from src.core.database import get_session
+		from src.databases.users import User
+		from sqlalchemy import select
 
 		user_id = message.from_user.id if message.from_user else 0
+		# Check user step before calling handler
+		async with get_session() as session:
+			user: User | None = await session.scalar(select(User).where(User.user_id == user_id))
+			if not user or user.step != "start":
+				return
+
 		result = await handle_invite(user_id)
 		# Send photo with caption first
 		photo_path = result.get("photo_path")
@@ -56,6 +65,23 @@ async def handle_text_reply(message: Message) -> None:
 		# Then send second text message if any
 		if result.get("text"):
 			await message.answer(result.get("text"))
+		return
+
+	if main_id == "main:help":
+		from src.handlers.replies.help import handle_help
+		from src.core.database import get_session
+		from src.databases.users import User
+		from sqlalchemy import select
+
+		user_id = message.from_user.id if message.from_user else 0
+		# Check user step before calling handler
+		async with get_session() as session:
+			user: User | None = await session.scalar(select(User).where(User.user_id == user_id))
+			if not user or user.step != "start":
+				return
+
+		result = await handle_help()
+		await message.answer(result.get("text", ""))
 		return
 
 	await message.answer("Text received, delegating to replies or default.")
