@@ -51,6 +51,19 @@ async def help_credit_command(message: Message) -> None:
 		return
 
 
+@router.message(Command("help_gps"))
+async def help_gps_command(message: Message) -> None:
+	from src.handlers.commands.help_gps import handle_help_gps
+
+	result = await handle_help_gps()
+	photo_path = result.get("photo_path")
+	caption = result.get("caption")
+	if photo_path and caption:
+		photo = FSInputFile(photo_path)
+		await message.answer_photo(photo, caption=caption)
+		return
+
+
 # Optional: catch-all for any other command (text starting with "/")
 @router.message(F.text.startswith("/"))
 async def unknown_command(message: Message) -> None:
