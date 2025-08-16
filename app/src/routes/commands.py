@@ -147,6 +147,15 @@ async def help_chw_command(message: Message) -> None:
 	return
 
 
+@router.message(Command("help_contacts"))
+async def help_contacts_command(message: Message) -> None:
+	from src.handlers.commands.help_contacts import handle_help_contacts
+
+	result = await handle_help_contacts()
+	await message.answer(result.get("text", ""))
+	return
+
+
 @router.message(Command("help_shortcuts"))
 async def help_shortcuts_command(message: Message) -> None:
 	from src.handlers.commands.help_shortcuts import handle_help_shortcuts
