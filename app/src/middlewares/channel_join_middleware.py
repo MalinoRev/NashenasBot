@@ -1,4 +1,5 @@
 from typing import Any, Callable, Dict, Optional, List
+import contextlib
 
 from aiogram import BaseMiddleware
 from aiogram.types import CallbackQuery, Message
@@ -8,6 +9,7 @@ from src.core.database import get_session
 from src.databases.requested_channels import RequestedChannel
 from src.context.messages.channel_join.required import get_message as get_required_message
 from src.context.keyboards.inline.channelJoin import build_keyboard as build_channel_join_kb
+from src.context.messages.channel_join.success import get_message as get_success_message
 
 
 class ChannelJoinMiddleware(BaseMiddleware):
@@ -29,6 +31,17 @@ class ChannelJoinMiddleware(BaseMiddleware):
 			user_id = event.from_user.id if event.from_user else None
 		if not user_id:
 			return None
+
+		# Special handling: if this is the "check membership" callback, delete the originating message once
+		is_check_callback = isinstance(event, CallbackQuery) and getattr(event, "data", "") == "check_channels_membership"
+		if is_check_callback:
+			# Acknowledge callback to stop loading state
+			with contextlib.suppress(Exception):
+				await event.answer()
+			# Try deleting the prompt message only once
+			if event.message is not None:
+				with contextlib.suppress(Exception):
+					await event.message.delete()
 
 		# Load required channels
 		async with get_session() as session:
@@ -57,6 +70,13 @@ class ChannelJoinMiddleware(BaseMiddleware):
 				not_joined.append(str(ch.channel_id))
 
 		if not not_joined:
+			# If this was the check callback, just inform user and stop (do not pass to downstream handlers)
+			if is_check_callback:
+				if isinstance(event, CallbackQuery) and event.message:
+					with contextlib.suppress(Exception):
+						await event.message.answer(get_success_message())
+				return None
+			# Otherwise allow normal flow
 			return await handler(event, data)
 
 		# Build prompt and keyboard
