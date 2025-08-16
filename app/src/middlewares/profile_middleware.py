@@ -32,6 +32,7 @@ from src.context.keyboards.reply.gender import build_keyboard as build_gender_kb
 from src.context.keyboards.reply.age import build_keyboard as build_age_kb, resolve_id_from_text as resolve_age_id
 from src.context.keyboards.reply.state import build_keyboard as build_state_kb, resolve_id_from_text as resolve_state_id
 from src.context.keyboards.reply.city import build_keyboard as build_city_kb, resolve_id_from_text as resolve_city_id
+from src.context.keyboards.reply.mainButtons import build_keyboard as build_main_kb
 from src.databases.users import User
 from src.databases.states import State
 from src.databases.cities import City
@@ -344,9 +345,12 @@ class ProfileMiddleware(BaseMiddleware):
 				profile.city = city.id
 				user.step = "start"
 				await session.commit()
-				await event.answer(get_profile_completed_message(), reply_markup=ReplyKeyboardRemove())
-				data["profile_ok"] = True
-				return await handler(event, data)
+				# Send profile completed with main buttons
+				main_kb, _ = build_main_kb()
+				await event.answer(get_profile_completed_message(), reply_markup=main_kb)
+				# Prevent further handlers for this last message
+				data["profile_ok"] = False
+				return None
 
 		# Profile already complete or nothing to do
 		# If profile is still incomplete, re-prompt current step instead of delegating to default
