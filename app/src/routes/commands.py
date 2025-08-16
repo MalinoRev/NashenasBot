@@ -125,6 +125,19 @@ async def help_terms_command(message: Message) -> None:
 		return
 
 
+@router.message(Command("help_onw"))
+async def help_onw_command(message: Message) -> None:
+	from src.handlers.commands.help_onw import handle_help_onw
+
+	result = await handle_help_onw()
+	photo_path = result.get("photo_path")
+	caption = result.get("caption")
+	if photo_path and caption:
+		photo = FSInputFile(photo_path)
+		await message.answer_photo(photo, caption=caption)
+		return
+
+
 @router.message(Command("help_shortcuts"))
 async def help_shortcuts_command(message: Message) -> None:
 	from src.handlers.commands.help_shortcuts import handle_help_shortcuts
