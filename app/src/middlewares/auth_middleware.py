@@ -9,6 +9,7 @@ from sqlalchemy.exc import IntegrityError
 
 from src.core.database import get_session
 from src.databases.users import User
+from src.context.messages.auth.welcome import get_message as get_welcome_message
 
 
 class AuthMiddleware(BaseMiddleware):
@@ -63,6 +64,13 @@ class AuthMiddleware(BaseMiddleware):
 			return await handler(event, data)
 		# Created successfully
 		data["auth_ok"] = True
+		# Send welcome message only on Message events
+		if isinstance(event, Message):
+			try:
+				first_name = event.from_user.first_name if event.from_user else None
+				await event.answer(get_welcome_message(first_name))
+			except Exception:
+				pass
 		return await handler(event, data)
 
 
