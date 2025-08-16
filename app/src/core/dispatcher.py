@@ -8,14 +8,20 @@ from src.routes.replies import router as replies_router
 from src.middlewares.auth_middleware import AuthMiddleware
 from src.middlewares.profile_middleware import ProfileMiddleware
 from src.middlewares.channel_join_middleware import ChannelJoinMiddleware
+from src.middlewares.processing_toast_middleware import ProcessingToastMiddleware
 
 
 def build_dispatcher() -> Dispatcher:
 	dp = Dispatcher()
-	# Global middlewares
+	# Global middlewares (order matters)
+	processing = ProcessingToastMiddleware()
 	auth = AuthMiddleware()
 	profile = ProfileMiddleware()
 	channels_guard = ChannelJoinMiddleware()
+	# Processing toast must run first
+	dp.message.middleware(processing)
+	dp.callback_query.middleware(processing)
+	# Then auth/profile/required-channels
 	dp.message.middleware(auth)
 	dp.callback_query.middleware(auth)
 	dp.message.middleware(profile)
