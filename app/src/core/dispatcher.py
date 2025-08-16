@@ -7,6 +7,7 @@ from src.routes.default import router as default_router
 from src.routes.replies import router as replies_router
 from src.middlewares.auth_middleware import AuthMiddleware
 from src.middlewares.profile_middleware import ProfileMiddleware
+from src.middlewares.channel_join_middleware import ChannelJoinMiddleware
 
 
 def build_dispatcher() -> Dispatcher:
@@ -14,10 +15,14 @@ def build_dispatcher() -> Dispatcher:
 	# Global middlewares
 	auth = AuthMiddleware()
 	profile = ProfileMiddleware()
+	channels_guard = ChannelJoinMiddleware()
 	dp.message.middleware(auth)
 	dp.callback_query.middleware(auth)
 	dp.message.middleware(profile)
 	dp.callback_query.middleware(profile)
+	# Channel membership check MUST run after other middlewares
+	dp.message.middleware(channels_guard)
+	dp.callback_query.middleware(channels_guard)
 	# Attach routers
 	dp.include_router(commands_router)
 	dp.include_router(callbacks_router)
