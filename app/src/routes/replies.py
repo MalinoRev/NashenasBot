@@ -18,8 +18,20 @@ async def handle_text_reply(message: Message) -> None:
 	main_id = resolve_main_id(text)
 	if main_id == "main:my_anon_link":
 		from src.handlers.replies.my_anon_link import handle_my_anon_link
+		from src.core.database import get_session
+		from src.databases.users import User
+		from sqlalchemy import select
 
 		user_id = message.from_user.id if message.from_user else 0
+		
+		# Check user step before calling handler
+		async with get_session() as session:
+			user: User | None = await session.scalar(select(User).where(User.user_id == user_id))
+			if not user or user.step != "start":
+				# User step is not 'start', don't send anything
+				return
+		
+		# User step is 'start', proceed with handler
 		result = await handle_my_anon_link(user_id)
 		
 		# Send first message
