@@ -99,6 +99,19 @@ async def help_pchat_command(message: Message) -> None:
 		return
 
 
+@router.message(Command("help_direct"))
+async def help_direct_command(message: Message) -> None:
+	from src.handlers.commands.help_direct import handle_help_direct
+
+	result = await handle_help_direct()
+	photo_path = result.get("photo_path")
+	caption = result.get("caption")
+	if photo_path and caption:
+		photo = FSInputFile(photo_path)
+		await message.answer_photo(photo, caption=caption)
+		return
+
+
 # Optional: catch-all for any other command (text starting with "/")
 @router.message(F.text.startswith("/"))
 async def unknown_command(message: Message) -> None:
