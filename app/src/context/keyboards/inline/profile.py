@@ -1,13 +1,14 @@
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 
-def build_profile_keyboard() -> InlineKeyboardMarkup:
+def build_profile_keyboard(is_like_active: bool = True) -> InlineKeyboardMarkup:
+	like_text = "لایک (فعال ✅)" if is_like_active else "لایک (غیر فعال ⛔️)"
 	rows = [
 		[
 			InlineKeyboardButton(text="مشاهده موقعیت GPS من 📍", callback_data="profile:view_location"),
 		],
 		[
-			InlineKeyboardButton(text="لایک (فعال ✅)", callback_data="profile:like_toggle"),
+			InlineKeyboardButton(text=like_text, callback_data="profile:like_toggle"),
 			InlineKeyboardButton(text="مشاهده لایک کننده ها ❤️", callback_data="profile:view_likers"),
 		],
 		[

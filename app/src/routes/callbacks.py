@@ -106,6 +106,10 @@ async def handle_any_callback(callback: CallbackQuery) -> None:
 		from src.handlers.callbacks.profile_view_location import handle_profile_view_location
 		await handle_profile_view_location(callback)
 		return
+	if data == "profile:like_toggle":
+		from src.handlers.callbacks.profile_like_toggle import handle_profile_like_toggle
+		await handle_profile_like_toggle(callback)
+		return
 	await callback.answer()
 	await callback.message.answer("Callback received, but not implemented yet.")
 

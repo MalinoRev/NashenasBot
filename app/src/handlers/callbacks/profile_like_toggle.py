@@ -1,5 +1,5 @@
-from sqlalchemy import select, func
-from aiogram.types import FSInputFile
+from aiogram.types import CallbackQuery, FSInputFile
+from sqlalchemy import select
 
 from src.core.database import get_session
 from src.databases.users import User
@@ -11,19 +11,33 @@ from src.context.messages.replies.profile import format_profile_caption
 from src.context.keyboards.inline.profile import build_profile_keyboard
 
 
-async def handle_profile(user_id: int) -> dict:
+async def handle_profile_like_toggle(callback: CallbackQuery) -> None:
+	user_id = callback.from_user.id if callback.from_user else 0
 	async with get_session() as session:
 		user: User | None = await session.scalar(select(User).where(User.user_id == user_id))
 		if not user:
-			return {"text": "حساب کاربری یافت نشد."}
+			await callback.answer("حساب یافت نشد.")
+			return
+		# Only from main menu
+		if getattr(user, "step", "start") != "start":
+			await callback.answer("این عملیات فقط در منوی اصلی قابل اجراست.")
+			return
+		# Toggle like receiving state
+		current = bool(getattr(user, "can_get_likes", True))
+		user.can_get_likes = not current
+		await session.commit()
+		# Delete current message
+		try:
+			await callback.message.delete()
+		except Exception:
+			pass
+		# Rebuild and resend profile
 		profile: UserProfile | None = await session.scalar(select(UserProfile).where(UserProfile.user_id == user.id))
-		likes_count = 0
-		likes_row = await session.execute(select(func.count(Like.id)).where(Like.target_id == user.id))
-		likes_count = likes_row.scalar_one() or 0
+		likes_result = await session.execute(select(Like).where(Like.target_id == user.id))
+		likes_count = len(likes_result.all())
 		name = (profile.name if profile and profile.name else None) or (user.tg_name or "بدون نام")
 		age = str(profile.age) if profile and profile.age is not None else "?"
 		gender_text = "دختر" if profile and profile.is_female else ("پسر" if profile and profile and profile.is_female is not None else "نامشخص")
-		# Fetch state/city names if present
 		state_name = "—"
 		city_name = "—"
 		if profile and profile.state is not None:
@@ -44,10 +58,11 @@ async def handle_profile(user_id: int) -> dict:
 			like_count=likes_count,
 			unique_id=unique_id,
 		)
-		# Use path relative to container workdir (/app)
 		photo_path = "src/context/resources/images/noimage-girl.jpg" if (profile and profile.is_female) else "src/context/resources/images/noimage-boy.jpg"
-		keyboard = build_profile_keyboard(is_like_active=bool(getattr(user, "can_get_likes", True)))
-		return {"photo_path": photo_path, "caption": caption, "reply_markup": keyboard}
+		kb = build_profile_keyboard(is_like_active=bool(user.can_get_likes))
+		photo = FSInputFile(photo_path)
+		await callback.message.answer_photo(photo, caption=caption, reply_markup=kb)
+		await callback.answer("وضعیت لایک {} شد.".format("فعال" if user.can_get_likes else "غیرفعال"))
 
 
 
