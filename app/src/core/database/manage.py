@@ -20,6 +20,7 @@ import src.databases.chat_history  # noqa: F401
 import src.databases.likes  # noqa: F401
 import src.databases.user_rewards  # noqa: F401
 import src.databases.chat_queue  # noqa: F401
+import src.databases.user_blocked  # noqa: F401
 
 
 Action = Literal["create", "drop", "recreate"]
