@@ -7,6 +7,7 @@ from src.context.messages.callbacks.random_match import (
 	get_not_in_start_notice,
 	get_searching_message,
 )
+from src.context.keyboards.reply.random_match import build_cancel_keyboard
 
 
 async def handle_random_match_callback(callback: CallbackQuery) -> None:
@@ -22,8 +23,9 @@ async def handle_random_match_callback(callback: CallbackQuery) -> None:
 			await callback.message.delete()
 		except Exception:
 			pass
-		# Send searching message
-		await callback.message.answer(get_searching_message())
+		# Send searching message with reply cancel button
+		cancel_kb, _ = build_cancel_keyboard()
+		await callback.message.answer(get_searching_message(), reply_markup=cancel_kb)
 		# Update step to 'searching'
 		user.step = "searching"
 		await session.commit()

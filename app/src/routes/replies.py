@@ -1,7 +1,10 @@
 from aiogram import Router
 from aiogram.filters import Command
-from aiogram.types import Message, FSInputFile
+from aiogram.types import Message, FSInputFile, LinkPreviewOptions
 from src.context.keyboards.reply.mainButtons import resolve_id_from_text as resolve_main_id
+from src.context.keyboards.reply.random_match import resolve_id_from_text as resolve_random_match_reply_id
+from src.context.keyboards.reply.mainButtons import build_keyboard as build_main_kb
+from src.context.messages.commands.start import get_message as get_start_message
 
 
 router = Router(name="replies")
@@ -15,6 +18,34 @@ async def handle_text_reply(message: Message) -> None:
 		return
 
 	text = message.text or ""
+
+	# Handle random_match cancel reply button
+	rm_id = resolve_random_match_reply_id(text)
+	if rm_id == "random_match:cancel":
+		from src.core.database import get_session
+		from src.databases.users import User
+		from sqlalchemy import select
+
+		user_id = message.from_user.id if message.from_user else 0
+		async with get_session() as session:
+			user: User | None = await session.scalar(select(User).where(User.user_id == user_id))
+			if not user or user.step != "searching":
+				return
+			# Set step back to start
+			user.step = "start"
+			await session.commit()
+		# Send the same start message + main keyboard as /start
+		name = (message.from_user.first_name if message.from_user else None) or (message.from_user.username if message.from_user else None)
+		start_text = get_start_message(name)
+		kb, _ = build_main_kb()
+		await message.answer(
+			start_text,
+			reply_markup=kb,
+			parse_mode="Markdown",
+			link_preview_options=LinkPreviewOptions(is_disabled=True),
+		)
+		return
+
 	main_id = resolve_main_id(text)
 	if main_id == "main:my_anon_link":
 		from src.handlers.replies.my_anon_link import handle_my_anon_link
