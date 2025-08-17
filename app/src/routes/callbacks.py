@@ -78,6 +78,26 @@ async def handle_any_callback(callback: CallbackQuery) -> None:
 		await callback.message.answer(get_msg(), reply_markup=build_kb())
 		await callback.answer()
 		return
+	if data.startswith("nearby_gender_5:"):
+		from src.handlers.callbacks.nearby_gender_5 import handle_nearby_gender_5_callback
+		await handle_nearby_gender_5_callback(callback)
+		return
+	if data.startswith("nearby_gender_10:"):
+		from src.handlers.callbacks.nearby_gender_10 import handle_nearby_gender_10_callback
+		await handle_nearby_gender_10_callback(callback)
+		return
+	if data.startswith("nearby_gender_30:"):
+		from src.handlers.callbacks.nearby_gender_30 import handle_nearby_gender_30_callback
+		await handle_nearby_gender_30_callback(callback)
+		return
+	if data.startswith("nearby_gender_60:"):
+		from src.handlers.callbacks.nearby_gender_60 import handle_nearby_gender_60_callback
+		await handle_nearby_gender_60_callback(callback)
+		return
+	if data.startswith("nearby_gender_100:"):
+		from src.handlers.callbacks.nearby_gender_100 import handle_nearby_gender_100_callback
+		await handle_nearby_gender_100_callback(callback)
+		return
 	if data == "nearby:request_location":
 		from src.handlers.callbacks.nearby_request_location import handle_nearby_request_location
 		await handle_nearby_request_location(callback)
