@@ -44,6 +44,17 @@ async def handle_text_reply(message: Message) -> None:
 
 	if main_id == "main:random_match":
 		from src.handlers.replies.random_match import handle_random_match
+		from src.core.database import get_session
+		from src.databases.users import User
+		from sqlalchemy import select
+
+		user_id = message.from_user.id if message.from_user else 0
+		# Check user step before calling handler
+		async with get_session() as session:
+			user: User | None = await session.scalar(select(User).where(User.user_id == user_id))
+			if not user or user.step != "start":
+				return
+
 		result = await handle_random_match()
 		await message.answer(result.get("text", ""), reply_markup=result.get("reply_markup"))
 		return
