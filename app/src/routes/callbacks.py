@@ -28,6 +28,56 @@ async def handle_any_callback(callback: CallbackQuery) -> None:
 		from src.handlers.callbacks.random_match_state import handle_random_match_state_callback
 		await handle_random_match_state_callback(callback)
 		return
+	if data == "nearby_distance:5":
+		from src.context.messages.callbacks.nearby_distance_5 import get_message as get_msg
+		from src.context.keyboards.inline.nearby_gender_5 import build_keyboard as build_kb
+		try:
+			await callback.message.delete()
+		except Exception:
+			pass
+		await callback.message.answer(get_msg(), reply_markup=build_kb())
+		await callback.answer()
+		return
+	if data == "nearby_distance:10":
+		from src.context.messages.callbacks.nearby_distance_10 import get_message as get_msg
+		from src.context.keyboards.inline.nearby_gender_10 import build_keyboard as build_kb
+		try:
+			await callback.message.delete()
+		except Exception:
+			pass
+		await callback.message.answer(get_msg(), reply_markup=build_kb())
+		await callback.answer()
+		return
+	if data == "nearby_distance:30":
+		from src.context.messages.callbacks.nearby_distance_30 import get_message as get_msg
+		from src.context.keyboards.inline.nearby_gender_30 import build_keyboard as build_kb
+		try:
+			await callback.message.delete()
+		except Exception:
+			pass
+		await callback.message.answer(get_msg(), reply_markup=build_kb())
+		await callback.answer()
+		return
+	if data == "nearby_distance:60":
+		from src.context.messages.callbacks.nearby_distance_60 import get_message as get_msg
+		from src.context.keyboards.inline.nearby_gender_60 import build_keyboard as build_kb
+		try:
+			await callback.message.delete()
+		except Exception:
+			pass
+		await callback.message.answer(get_msg(), reply_markup=build_kb())
+		await callback.answer()
+		return
+	if data == "nearby_distance:100":
+		from src.context.messages.callbacks.nearby_distance_100 import get_message as get_msg
+		from src.context.keyboards.inline.nearby_gender_100 import build_keyboard as build_kb
+		try:
+			await callback.message.delete()
+		except Exception:
+			pass
+		await callback.message.answer(get_msg(), reply_markup=build_kb())
+		await callback.answer()
+		return
 	if data == "nearby:request_location":
 		from src.handlers.callbacks.nearby_request_location import handle_nearby_request_location
 		await handle_nearby_request_location(callback)
