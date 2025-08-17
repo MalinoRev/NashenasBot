@@ -126,6 +126,14 @@ async def handle_any_callback(callback: CallbackQuery) -> None:
 		from src.handlers.callbacks.profile_advanced_settings import handle_profile_advanced_settings
 		await handle_profile_advanced_settings(callback)
 		return
+	if data == "advanced:silent_mode":
+		from src.handlers.callbacks.advanced_silent_mode import handle_advanced_silent_mode
+		await handle_advanced_silent_mode(callback)
+		return
+	if data.startswith("advanced_silent:"):
+		from src.handlers.callbacks.advanced_silent_mode_set import handle_advanced_silent_mode_set
+		await handle_advanced_silent_mode_set(callback)
+		return
 	await callback.answer()
 	await callback.message.answer("Callback received, but not implemented yet.")
 
