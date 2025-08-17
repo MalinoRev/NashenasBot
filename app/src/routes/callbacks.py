@@ -114,6 +114,10 @@ async def handle_any_callback(callback: CallbackQuery) -> None:
 		from src.handlers.callbacks.profile_view_likers import handle_profile_view_likers
 		await handle_profile_view_likers(callback)
 		return
+	if data == "profile:blocks":
+		from src.handlers.callbacks.profile_view_blocks import handle_profile_view_blocks
+		await handle_profile_view_blocks(callback)
+		return
 	await callback.answer()
 	await callback.message.answer("Callback received, but not implemented yet.")
 
