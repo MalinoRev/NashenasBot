@@ -3,6 +3,7 @@ from aiogram.filters import Command
 from aiogram.types import Message, FSInputFile, LinkPreviewOptions
 from src.context.keyboards.reply.mainButtons import resolve_id_from_text as resolve_main_id
 from src.context.keyboards.reply.random_match import resolve_id_from_text as resolve_random_match_reply_id
+from src.context.keyboards.reply.nearby import resolve_id_from_text as resolve_nearby_reply_id
 from src.context.keyboards.reply.mainButtons import build_keyboard as build_main_kb
 from src.context.messages.commands.start import get_message as get_start_message
 
@@ -35,6 +36,35 @@ async def handle_text_reply(message: Message) -> None:
 			# Delete any queue records for this user (by internal users.id)
 			await session.execute(delete(ChatQueue).where(ChatQueue.user_id == user.id))
 			# Set step back to start
+			user.step = "start"
+			await session.commit()
+		# Send the same start message + main keyboard as /start
+		name = (message.from_user.first_name if message.from_user else None) or (message.from_user.username if message.from_user else None)
+		start_text = get_start_message(name)
+		kb, _ = build_main_kb()
+		await message.answer(
+			start_text,
+			reply_markup=kb,
+			parse_mode="Markdown",
+			link_preview_options=LinkPreviewOptions(is_disabled=True),
+		)
+		return
+
+	# Handle nearby back reply button
+	nearby_id = resolve_nearby_reply_id(text)
+	if nearby_id == "nearby:back":
+		from src.core.database import get_session
+		from src.databases.users import User
+		from sqlalchemy import select
+
+		user_id = message.from_user.id if message.from_user else 0
+		async with get_session() as session:
+			user: User | None = await session.scalar(select(User).where(User.user_id == user_id))
+			if not user:
+				return
+			# Only allow from sending_location (ignore otherwise)
+			if user.step != "sending_location":
+				return
 			user.step = "start"
 			await session.commit()
 		# Send the same start message + main keyboard as /start

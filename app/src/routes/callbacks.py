@@ -28,6 +28,10 @@ async def handle_any_callback(callback: CallbackQuery) -> None:
 		from src.handlers.callbacks.random_match_state import handle_random_match_state_callback
 		await handle_random_match_state_callback(callback)
 		return
+	if data == "nearby:request_location":
+		from src.handlers.callbacks.nearby_request_location import handle_nearby_request_location
+		await handle_nearby_request_location(callback)
+		return
 	await callback.answer()
 	await callback.message.answer("Callback received, but not implemented yet.")
 
