@@ -3,6 +3,9 @@ from sqlalchemy import select
 
 from src.core.database import get_session
 from src.databases.users import User
+from src.databases.user_profiles import UserProfile
+from src.databases.user_locations import UserLocation
+from src.databases.chat_queue import ChatQueue
 from src.context.messages.callbacks.random_match import (
 	get_not_in_start_notice,
 	get_searching_message,
@@ -23,6 +26,24 @@ async def handle_random_match_callback(callback: CallbackQuery) -> None:
 			await callback.message.delete()
 		except Exception:
 			pass
+		# Load profile and optional location
+		profile: UserProfile | None = await session.scalar(select(UserProfile).where(UserProfile.user_id == user.id))
+		loc: UserLocation | None = await session.scalar(select(UserLocation).where(UserLocation.user_id == user.id))
+		# Prepare queue row
+		queue_row = ChatQueue(
+			user_id=user.id,
+			user_state_id=profile.state if profile and profile.state is not None else None,
+			user_city_id=profile.city if profile and profile.city is not None else None,
+			user_age=profile.age if profile and profile.age is not None else 0,
+			user_location_x=(loc.location_x if loc else None),
+			user_location_y=(loc.location_y if loc else None),
+			filter_age_range_from=None,
+			filter_age_range_until=None,
+			filter_location_distance=None,
+			filter_only_boy=False,
+			filter_only_girl=False,
+		)
+		session.add(queue_row)
 		# Send searching message with reply cancel button
 		cancel_kb, _ = build_cancel_keyboard()
 		await callback.message.answer(get_searching_message(), reply_markup=cancel_kb)

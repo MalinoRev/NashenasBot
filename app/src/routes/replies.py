@@ -24,13 +24,16 @@ async def handle_text_reply(message: Message) -> None:
 	if rm_id == "random_match:cancel":
 		from src.core.database import get_session
 		from src.databases.users import User
-		from sqlalchemy import select
+		from src.databases.chat_queue import ChatQueue
+		from sqlalchemy import select, delete
 
 		user_id = message.from_user.id if message.from_user else 0
 		async with get_session() as session:
 			user: User | None = await session.scalar(select(User).where(User.user_id == user_id))
 			if not user or user.step != "searching":
 				return
+			# Delete any queue records for this user (by internal users.id)
+			await session.execute(delete(ChatQueue).where(ChatQueue.user_id == user.id))
 			# Set step back to start
 			user.step = "start"
 			await session.commit()
