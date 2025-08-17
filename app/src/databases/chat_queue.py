@@ -24,6 +24,8 @@ class ChatQueue(Base):
 	filter_location_distance: Mapped[int | None] = mapped_column(Integer, nullable=True)
 	filter_only_boy: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="0")
 	filter_only_girl: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="0")
+	filter_only_state: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="0")
+	filter_only_city: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="0")
 	created_at: Mapped[DateTime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
 
 
