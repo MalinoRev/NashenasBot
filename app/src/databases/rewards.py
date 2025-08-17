@@ -1,4 +1,4 @@
-from sqlalchemy import Integer
+from sqlalchemy import BigInteger, Integer
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.core.database import Base
@@ -12,7 +12,7 @@ class Reward(Base):
 		"mysql_collate": "utf8mb4_general_ci",
 	}
 
-	# Single-row table pattern (no explicit PK)
+	id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
 	invite_amount: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
 	profile_amount: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
 
