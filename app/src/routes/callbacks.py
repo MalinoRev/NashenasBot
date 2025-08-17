@@ -102,6 +102,10 @@ async def handle_any_callback(callback: CallbackQuery) -> None:
 		from src.handlers.callbacks.nearby_request_location import handle_nearby_request_location
 		await handle_nearby_request_location(callback)
 		return
+	if data == "profile:view_location":
+		from src.handlers.callbacks.profile_view_location import handle_profile_view_location
+		await handle_profile_view_location(callback)
+		return
 	await callback.answer()
 	await callback.message.answer("Callback received, but not implemented yet.")
 
