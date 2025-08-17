@@ -42,6 +42,12 @@ async def handle_text_reply(message: Message) -> None:
 			await message.answer(result.get("text2"))
 		return
 
+	if main_id == "main:random_match":
+		from src.handlers.replies.random_match import handle_random_match
+		result = await handle_random_match()
+		await message.answer(result.get("text", ""), reply_markup=result.get("reply_markup"))
+		return
+
 	if main_id == "main:invite":
 		from src.handlers.replies.invite import handle_invite
 		from src.core.database import get_session
