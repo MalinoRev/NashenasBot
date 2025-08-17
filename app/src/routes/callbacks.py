@@ -122,6 +122,10 @@ async def handle_any_callback(callback: CallbackQuery) -> None:
 		from src.handlers.callbacks.profile_view_contacts import handle_profile_view_contacts
 		await handle_profile_view_contacts(callback)
 		return
+	if data == "profile:advanced_settings":
+		from src.handlers.callbacks.profile_advanced_settings import handle_profile_advanced_settings
+		await handle_profile_advanced_settings(callback)
+		return
 	await callback.answer()
 	await callback.message.answer("Callback received, but not implemented yet.")
 
