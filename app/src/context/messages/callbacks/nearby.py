@@ -6,4 +6,8 @@ def get_request_location_message() -> str:
 	)
 
 
+def get_location_saved_success() -> str:
+	return "✅ موقعیت مکانی شما با موفقیت ثبت شد."
+
+
 

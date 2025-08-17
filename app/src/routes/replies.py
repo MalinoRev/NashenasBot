@@ -20,6 +20,43 @@ async def handle_text_reply(message: Message) -> None:
 
 	text = message.text or ""
 
+	# Handle sending location (reply button sends location payload)
+	if message.location is not None:
+		from src.core.database import get_session
+		from src.databases.users import User
+		from src.databases.user_locations import UserLocation
+		from sqlalchemy import select
+		from src.context.messages.callbacks.nearby import get_location_saved_success
+
+		user_id = message.from_user.id if message.from_user else 0
+		async with get_session() as session:
+			user: User | None = await session.scalar(select(User).where(User.user_id == user_id))
+			if not user or user.step != "sending_location":
+				return
+			# Upsert user location
+			loc: UserLocation | None = await session.scalar(select(UserLocation).where(UserLocation.user_id == user.id))
+			if loc is None:
+				loc = UserLocation(user_id=user.id, location_x=message.location.latitude, location_y=message.location.longitude)
+				session.add(loc)
+			else:
+				loc.location_x = message.location.latitude
+				loc.location_y = message.location.longitude
+			# Reset step
+			user.step = "start"
+			await session.commit()
+		await message.answer(get_location_saved_success())
+		# Also send /start exactly as elsewhere
+		name = (message.from_user.first_name if message.from_user else None) or (message.from_user.username if message.from_user else None)
+		start_text = get_start_message(name)
+		kb, _ = build_main_kb()
+		await message.answer(
+			start_text,
+			reply_markup=kb,
+			parse_mode="Markdown",
+			link_preview_options=LinkPreviewOptions(is_disabled=True),
+		)
+		return
+
 	# Handle random_match cancel reply button
 	rm_id = resolve_random_match_reply_id(text)
 	if rm_id == "random_match:cancel":
