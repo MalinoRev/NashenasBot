@@ -5,4 +5,8 @@ def get_location_missing_message() -> str:
 	)
 
 
+def get_choose_distance_message() -> str:
+	return "میخوای تا چه فاصله ای از اطرافت جستجو کنم ؟!"
+
+
 
