@@ -118,6 +118,10 @@ async def handle_any_callback(callback: CallbackQuery) -> None:
 		from src.handlers.callbacks.profile_view_blocks import handle_profile_view_blocks
 		await handle_profile_view_blocks(callback)
 		return
+	if data == "profile:contacts":
+		from src.handlers.callbacks.profile_view_contacts import handle_profile_view_contacts
+		await handle_profile_view_contacts(callback)
+		return
 	await callback.answer()
 	await callback.message.answer("Callback received, but not implemented yet.")
 
