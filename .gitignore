@@ -42,4 +42,7 @@ docker-compose.override.yml
 # Node (if accidentally added)
 node_modules/
 
+#User avatars
+avatars/
+
 
