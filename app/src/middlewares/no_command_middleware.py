@@ -13,7 +13,7 @@ from src.context.messages.no_command.blocked import get_message as get_blocked_m
 # Example configuration: allow none by default for sensitive steps.
 ALLOWED_COMMANDS_BY_STEP: dict[str, set[str]] = {
 	# While searching or sending location, require using on-screen buttons
-	"searching": {"/on", "/off", "/credit", "/link", "/Instagram"},
+	"searching": {"/on", "/off", "/credit", "/link", "/instagram"},
 	"sending_location": set(),
 }
 
@@ -52,10 +52,12 @@ class NoCommandMiddleware(BaseMiddleware):
 
 		if user_step:
 			allowed_set = ALLOWED_COMMANDS_BY_STEP.get(user_step)
-			if allowed_set is not None and command_name not in allowed_set:
-				# Command not allowed in this step
-				await event.answer(get_blocked_message())
-				return None
+			if allowed_set is not None:
+				allowed_lower = {cmd.lower() for cmd in allowed_set}
+				if command_name not in allowed_lower:
+					# Command not allowed in this step
+					await event.answer(get_blocked_message())
+					return None
 
 		return await handler(event, data)
 
