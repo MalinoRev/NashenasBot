@@ -196,6 +196,10 @@ async def handle_any_callback(callback: CallbackQuery) -> None:
 		from src.handlers.callbacks.advanced_alarms_toggle import handle_advanced_alarms_toggle
 		await handle_advanced_alarms_toggle(callback)
 		return
+	if data.startswith("coin:buy:"):
+		from src.handlers.callbacks.coin_buy import handle_coin_buy
+		await handle_coin_buy(callback)
+		return
 	await callback.answer()
 	await callback.message.answer("Callback received, but not implemented yet.")
 

@@ -33,12 +33,12 @@ async def create_payment_link(user_id_tg: int, price_toman: int, product: str) -
 	request_endpoint = (
 		"https://sandbox.zarinpal.com/pg/v4/payment/request.json"
 		if sandbox_flag
-		else "https://api.zarinpal.com/pg/v4/payment/request.json"
+		else "https://payment.zarinpal.com/pg/v4/payment/request.json"
 	)
 	startpay_base = (
 		"https://sandbox.zarinpal.com/pg/StartPay/"
 		if sandbox_flag
-		else "https://www.zarinpal.com/pg/StartPay/"
+		else "https://payment.zarinpal.com/pg/StartPay/"
 	)
 
 	amount_rial = int(price_toman) * 10
@@ -57,12 +57,12 @@ async def create_payment_link(user_id_tg: int, price_toman: int, product: str) -
 		session.add(payment)
 		await session.flush()  # get payment.id
 
-		callback_url = f"{base_url.rstrip('/')}/payment/callback/zarinpal?payment_id={payment.id}"
+		callback_url = f"{base_url.rstrip('/')}/callback"
 		payload = {
 			"merchant_id": merchant_id,
 			"amount": amount_rial,
 			"callback_url": callback_url,
-			"description": product,
+			"description": f"سفارش کاربر با آیدی {user_id_tg}",
 		}
 
 		async with httpx.AsyncClient(timeout=15.0) as client:
