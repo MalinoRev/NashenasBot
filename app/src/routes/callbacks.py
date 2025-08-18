@@ -130,6 +130,10 @@ async def handle_any_callback(callback: CallbackQuery) -> None:
 		from src.handlers.callbacks.advanced_silent_mode import handle_advanced_silent_mode
 		await handle_advanced_silent_mode(callback)
 		return
+	if data == "advanced:alarms":
+		from src.handlers.callbacks.advanced_alarms import handle_advanced_alarms
+		await handle_advanced_alarms(callback)
+		return
 	if data == "advanced:chat_filter":
 		from src.handlers.callbacks.advanced_chat_filter import handle_advanced_chat_filter
 		await handle_advanced_chat_filter(callback)
@@ -167,6 +171,10 @@ async def handle_any_callback(callback: CallbackQuery) -> None:
 	if data.startswith("advanced_silent:"):
 		from src.handlers.callbacks.advanced_silent_mode_set import handle_advanced_silent_mode_set
 		await handle_advanced_silent_mode_set(callback)
+		return
+	if data.startswith("advanced_alarms:"):
+		from src.handlers.callbacks.advanced_alarms_toggle import handle_advanced_alarms_toggle
+		await handle_advanced_alarms_toggle(callback)
 		return
 	await callback.answer()
 	await callback.message.answer("Callback received, but not implemented yet.")
