@@ -333,6 +333,32 @@ async def id_command(message: Message) -> None:
 	return
 
 
+# /Instagram -> send intro + user's anon link (same as main:link second message)
+@router.message(Command("Instagram"))
+async def instagram_command(message: Message) -> None:
+	from src.core.database import get_session
+	from src.databases.users import User
+	from sqlalchemy import select
+	from src.context.messages.commands.instagram import get_intro
+	from src.handlers.replies.my_anon_link import handle_my_anon_link
+	from src.context.messages.commands.instagram_link import format_link, get_link
+
+	user_id = message.from_user.id if message.from_user else 0
+	async with get_session() as session:
+		user: User | None = await session.scalar(select(User).where(User.user_id == user_id))
+		if not user:
+			return
+
+	await message.answer(get_intro())
+	# Build fresh link from unique_id to ensure only the URL is sent
+	async with get_session() as session2:
+		user2: User | None = await session2.scalar(select(User).where(User.user_id == user_id))
+		referral_id = user2.referral_id if user2 else None
+		link = get_link(referral_id)
+		if link:
+			await message.answer(format_link(link))
+	return
+
 # Optional: catch-all for any other command (text starting with "/")
 @router.message(F.text.startswith("/"))
 async def unknown_command(message: Message) -> None:
