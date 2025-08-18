@@ -22,7 +22,7 @@ async def handle_coin(user_id_tg: int) -> dict:
 		prices: list[tuple[int, int, int]] = [(p.id, p.amount, p.price) for p in prices_rows]
 
 	text = get_coin_message(int(user.credit or 0), invite_reward)
-	kb = build_coin_prices_kb(prices) if prices else None
+	kb = build_coin_prices_kb(prices)
 	return {"text": text, "reply_markup": kb}
 
 
