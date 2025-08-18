@@ -19,6 +19,7 @@ class ChatQueue(Base):
 	user_state_id: Mapped[int] = mapped_column(Integer, ForeignKey("states.id"), nullable=False)
 	user_city_id: Mapped[int] = mapped_column(Integer, ForeignKey("cities.id"), nullable=False)
 	user_age: Mapped[int] = mapped_column(Integer, nullable=False)
+	message_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
 	filter_age_range_from: Mapped[int | None] = mapped_column(Integer, nullable=True)
 	filter_age_range_until: Mapped[int | None] = mapped_column(Integer, nullable=True)
 	filter_location_distance: Mapped[int | None] = mapped_column(Integer, nullable=True)

@@ -29,12 +29,16 @@ async def handle_random_match_nearby_callback(callback: CallbackQuery) -> None:
 		# Load profile and optional location
 		profile: UserProfile | None = await session.scalar(select(UserProfile).where(UserProfile.user_id == user.id))
 		loc: UserLocation | None = await session.scalar(select(UserLocation).where(UserLocation.user_id == user.id))
-		# Prepare queue row (filter_only_city=True)
+		# Send searching message with reply cancel button and capture message_id
+		cancel_kb, _ = build_cancel_keyboard()
+		sent = await callback.message.answer(get_searching_message_nearby(), reply_markup=cancel_kb)
+		# Enqueue with the sent message id (filter_only_city=True)
 		queue_row = ChatQueue(
 			user_id=user.id,
 			user_state_id=profile.state if profile and profile.state is not None else None,
 			user_city_id=profile.city if profile and profile.city is not None else None,
 			user_age=profile.age if profile and profile.age is not None else 0,
+			message_id=sent.message_id,
 			user_location_x=(loc.location_x if loc else None),
 			user_location_y=(loc.location_y if loc else None),
 			filter_age_range_from=None,
@@ -46,9 +50,6 @@ async def handle_random_match_nearby_callback(callback: CallbackQuery) -> None:
 			filter_only_city=True,
 		)
 		session.add(queue_row)
-		# Send searching message with reply cancel button
-		cancel_kb, _ = build_cancel_keyboard()
-		await callback.message.answer(get_searching_message_nearby(), reply_markup=cancel_kb)
 		# Update step to 'searching'
 		user.step = "searching"
 		await session.commit()
