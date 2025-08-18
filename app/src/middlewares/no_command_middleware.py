@@ -13,7 +13,7 @@ from src.context.messages.no_command.blocked import get_message as get_blocked_m
 # Example configuration: allow none by default for sensitive steps.
 ALLOWED_COMMANDS_BY_STEP: dict[str, set[str]] = {
 	# While searching or sending location, require using on-screen buttons
-	"searching": {"/on", "/off", "/credit"},
+	"searching": {"/on", "/off", "/credit", "/link"},
 	"sending_location": set(),
 }
 
