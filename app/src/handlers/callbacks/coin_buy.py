@@ -13,6 +13,7 @@ from src.context.messages.callbacks.coin_buy import (
 	get_error_message,
 )
 from src.context.messages.callbacks.coin_gateway_notice import get_caption as get_gateway_caption
+from src.context.messages.callbacks.coin_gateway_prepare import get_message as get_gateway_prepare
 
 
 async def handle_coin_buy(callback: CallbackQuery) -> None:
@@ -49,6 +50,8 @@ async def handle_coin_buy(callback: CallbackQuery) -> None:
 	except Exception:
 		pass
 
+	# Inform user that link for this amount/price is being prepared
+	await callback.message.answer(get_gateway_prepare(int(price.amount), int(price.price)))
 	try:
 		# Persist product as a machine-readable identifier for callback processing
 		url = await create_payment_link(user_id_tg, int(price.price), f"coin:{price.amount}")
