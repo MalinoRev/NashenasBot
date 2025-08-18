@@ -10,6 +10,7 @@ from src.context.messages.callbacks.coin_buy import (
 )
 from src.context.messages.callbacks.coin_gateway_prepare import get_message as get_gateway_prepare
 from src.services.payments.zarinpal import create_payment_link
+from src.context.messages.callbacks.coin_vip_intro import get_message as get_vip_intro
 
 
 async def handle_coin_buy_vip(callback: CallbackQuery) -> None:
@@ -18,6 +19,9 @@ async def handle_coin_buy_vip(callback: CallbackQuery) -> None:
 		await callback.message.delete()
 	except Exception:
 		pass
+
+	# Send VIP intro message first
+	await callback.message.answer(get_vip_intro())
 
 	# Show gateway notice image with caption
 	image_path = str(
