@@ -183,6 +183,15 @@ async def help_shortcuts_command(message: Message) -> None:
 	return
 
 
+# /on command while searching: enable age filter ±3 years
+@router.message(Command("on"))
+async def on_command(message: Message) -> None:
+	from src.handlers.commands.on import handle_on_command
+
+	await handle_on_command(message)
+	return
+
+
 # Optional: catch-all for any other command (text starting with "/")
 @router.message(F.text.startswith("/"))
 async def unknown_command(message: Message) -> None:
