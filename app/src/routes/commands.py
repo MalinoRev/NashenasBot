@@ -192,6 +192,14 @@ async def on_command(message: Message) -> None:
 	return
 
 
+@router.message(Command("off"))
+async def off_command(message: Message) -> None:
+	from src.handlers.commands.off import handle_off_command
+
+	await handle_off_command(message)
+	return
+
+
 # Optional: catch-all for any other command (text starting with "/")
 @router.message(F.text.startswith("/"))
 async def unknown_command(message: Message) -> None:
