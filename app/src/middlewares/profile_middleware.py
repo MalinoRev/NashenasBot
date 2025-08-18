@@ -106,7 +106,6 @@ class ProfileMiddleware(BaseMiddleware):
 					or profile.age is None
 					or profile.state is None
 					or profile.city is None
-					or (getattr(user, "step", "start") != "start")
 				)
 				if incomplete:
 					# Special case: if profile does not exist yet, start the flow without sending invalid-command
