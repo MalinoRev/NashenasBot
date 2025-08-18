@@ -333,6 +333,16 @@ async def id_command(message: Message) -> None:
 	return
 
 
+# /deleted_account -> show delete account flow (same as advanced:delete_account)
+@router.message(Command("deleted_account"))
+async def deleted_account_command(message: Message) -> None:
+	from src.context.messages.callbacks.advanced_delete_account import get_message
+	from src.context.keyboards.inline.advanced_delete_account import build_keyboard
+
+	await message.answer(get_message(), reply_markup=build_keyboard())
+	return
+
+
 # /Instagram -> send intro + user's anon link (same as main:link second message)
 @router.message(Command("Instagram"))
 async def instagram_command(message: Message) -> None:
