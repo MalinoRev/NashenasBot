@@ -204,6 +204,14 @@ async def handle_any_callback(callback: CallbackQuery) -> None:
 		from src.handlers.callbacks.advanced_alarms_toggle import handle_advanced_alarms_toggle
 		await handle_advanced_alarms_toggle(callback)
 		return
+	if data == "advanced:delete_account":
+		from src.handlers.callbacks.advanced_delete_account import handle_advanced_delete_account
+		await handle_advanced_delete_account(callback)
+		return
+	if data == "advanced_delete:pay":
+		from src.handlers.callbacks.advanced_delete_account_pay import handle_advanced_delete_account_pay
+		await handle_advanced_delete_account_pay(callback)
+		return
 	if data.startswith("coin:buy:"):
 		from src.handlers.callbacks.coin_buy import handle_coin_buy
 		await handle_coin_buy(callback)

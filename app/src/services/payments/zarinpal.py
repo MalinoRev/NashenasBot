@@ -57,12 +57,12 @@ async def create_payment_link(user_id_tg: int, price_toman: int, product: str) -
 		session.add(payment)
 		await session.flush()  # get payment.id
 
-		callback_url = f"{base_url.rstrip('/')}/callback"
+		callback_url = f"{base_url.rstrip('/')}/callback?payment_id={payment.id}"
 		payload = {
 			"merchant_id": merchant_id,
 			"amount": amount_rial,
 			"callback_url": callback_url,
-			"description": f"سفارش کاربر با آیدی {user_id_tg}",
+			"description": f"{product} - سفارش کاربر با آیدی {user_id_tg}",
 		}
 
 		async with httpx.AsyncClient(timeout=15.0) as client:
@@ -74,14 +74,19 @@ async def create_payment_link(user_id_tg: int, price_toman: int, product: str) -
 			authority: Optional[str] = None
 			try:
 				if isinstance(data, dict) and "data" in data:
-					inner = data["data"] or {}
+					inner = data.get("data") or {}
 					if inner.get("code") == 100:
 						authority = inner.get("authority")
+					else:
+						# Include code/message when not successful
+						code = inner.get("code")
+						message_txt = inner.get("message")
+						raise RuntimeError(f"Zarinpal error code={code} message={message_txt}")
 			except Exception as exc:  # noqa: BLE001
-				raise RuntimeError("Invalid response from Zarinpal") from exc
+				raise RuntimeError(f"Invalid response from Zarinpal: {data}") from exc
 
 			if not authority:
-				raise RuntimeError("Failed to create payment request with Zarinpal")
+				raise RuntimeError(f"Failed to create payment request with Zarinpal: {data}")
 
 			# Persist authority and expiry (Zarinpal authorities typically valid ~30 minutes)
 			payment.authority = authority
