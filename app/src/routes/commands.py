@@ -200,6 +200,70 @@ async def off_command(message: Message) -> None:
 	return
 
 
+# /profile equivalent of main:profile
+@router.message(Command("profile"))
+async def profile_command(message: Message) -> None:
+	from src.handlers.replies.profile import handle_profile
+	from src.core.database import get_session
+	from src.databases.users import User
+	from sqlalchemy import select
+
+	user_id = message.from_user.id if message.from_user else 0
+	async with get_session() as session:
+		user: User | None = await session.scalar(select(User).where(User.user_id == user_id))
+		if not user or user.step != "start":
+			return
+
+	result = await handle_profile(user_id)
+	photo_path = result.get("photo_path")
+	caption = result.get("caption")
+	kb_inline = result.get("reply_markup")
+	if photo_path and caption:
+		photo = FSInputFile(photo_path)
+		await message.answer_photo(photo, caption=caption, reply_markup=kb_inline)
+	return
+
+
+# /link equivalent of main:my_anon_link
+@router.message(Command("link"))
+async def link_command(message: Message) -> None:
+	from src.handlers.replies.my_anon_link import handle_my_anon_link
+	from src.core.database import get_session
+	from src.databases.users import User
+	from sqlalchemy import select
+
+	user_id = message.from_user.id if message.from_user else 0
+	async with get_session() as session:
+		user: User | None = await session.scalar(select(User).where(User.user_id == user_id))
+		if not user or user.step != "start":
+			return
+
+	result = await handle_my_anon_link(user_id)
+	await message.answer(result.get("text", ""))
+	if result.get("text2"):
+		await message.answer(result.get("text2"))
+	return
+
+
+# /credit equivalent of main:coin
+@router.message(Command("credit"))
+async def credit_command(message: Message) -> None:
+	from src.handlers.replies.coin import handle_coin
+	from src.core.database import get_session
+	from src.databases.users import User
+	from sqlalchemy import select
+
+	user_id = message.from_user.id if message.from_user else 0
+	async with get_session() as session:
+		user: User | None = await session.scalar(select(User).where(User.user_id == user_id))
+		if not user or user.step != "start":
+			return
+
+	result = await handle_coin(user_id)
+	await message.answer(result.get("text", ""), reply_markup=result.get("reply_markup"))
+	return
+
+
 # Optional: catch-all for any other command (text starting with "/")
 @router.message(F.text.startswith("/"))
 async def unknown_command(message: Message) -> None:
