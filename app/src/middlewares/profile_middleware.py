@@ -31,6 +31,7 @@ from src.context.messages.profileMiddleware.profileCompleted import get_message 
 from src.context.messages.profileMiddleware.invalidCommand import get_message as get_invalid_command_message
 from src.context.messages.profileMiddleware.nameUpdated import get_message as get_name_updated_message
 from src.context.messages.profileMiddleware.genderUpdated import get_message as get_gender_updated_message
+from src.context.messages.profileMiddleware.ageUpdated import get_message as get_age_updated_message
 from src.context.keyboards.reply.gender import build_keyboard as build_gender_kb, resolve_id_from_text as resolve_gender_id
 from src.context.keyboards.reply.age import build_keyboard as build_age_kb, resolve_id_from_text as resolve_age_id
 from src.context.keyboards.reply.state import build_keyboard as build_state_kb, resolve_id_from_text as resolve_state_id
@@ -127,7 +128,7 @@ class ProfileMiddleware(BaseMiddleware):
 						gender_kb, _ = build_gender_kb()
 						await event.answer(get_choose_gender_message(), reply_markup=gender_kb)
 						return None
-					elif getattr(user, "step", "start") == "ask_age" or profile.age is None:
+					elif getattr(user, "step", "start") in {"ask_age", "edit_age"} or profile.age is None:
 						age_kb, _ = build_age_kb()
 						await event.answer(get_choose_age_message(), reply_markup=age_kb)
 						return None
@@ -255,9 +256,9 @@ class ProfileMiddleware(BaseMiddleware):
 				await event.answer(get_choose_age_message(), reply_markup=age_kb)
 				return None
 
-			# Step 3: age
-			if profile.age is None:
-				if user.step != "ask_age":
+			# Step 3: age (and edit flow)
+			if profile.age is None or getattr(user, "step", "start") == "edit_age":
+				if user.step not in {"ask_age", "edit_age"}:
 					user.step = "ask_age"
 					await session.commit()
 					age_kb, _ = build_age_kb()
@@ -279,6 +280,25 @@ class ProfileMiddleware(BaseMiddleware):
 							await event.answer(get_invalid_age_range_message(), reply_markup=age_kb1)
 							return None
 						profile.age = age_val
+						# If this was edit flow, finish with success + start
+						if getattr(user, "step", "start") == "edit_age":
+							user.step = "start"
+							await session.commit()
+							await event.answer(get_age_updated_message(), reply_markup=ReplyKeyboardRemove())
+							# send /start
+							name_display = None
+							if isinstance(event, Message) and event.from_user:
+								name_display = event.from_user.first_name or event.from_user.username
+							start_text = get_start_message(name_display)
+							kb, _ = build_main_kb()
+							await event.answer(
+								start_text,
+								reply_markup=kb,
+								parse_mode="Markdown",
+								link_preview_options=LinkPreviewOptions(is_disabled=True),
+							)
+							data["profile_ok"] = False
+							return None
 						user.step = "ask_state"
 						await session.commit()
 						states0: List[State] = list(await session.scalars(select(State).order_by(State.state_name)))
@@ -305,6 +325,25 @@ class ProfileMiddleware(BaseMiddleware):
 					await event.answer(get_invalid_age_range_message(), reply_markup=age_kb3)
 					return None
 				profile.age = age_val
+				# If this was edit flow, finish with success + start
+				if getattr(user, "step", "start") == "edit_age":
+					user.step = "start"
+					await session.commit()
+					await event.answer(get_age_updated_message(), reply_markup=ReplyKeyboardRemove())
+					name_display = None
+					if isinstance(event, Message) and event.from_user:
+						name_display = event.from_user.first_name or event.from_user.username
+					start_text = get_start_message(name_display)
+					kb, _ = build_main_kb()
+					await event.answer(
+						start_text,
+						reply_markup=kb,
+						parse_mode="Markdown",
+						link_preview_options=LinkPreviewOptions(is_disabled=True),
+					)
+					data["profile_ok"] = False
+					return None
+				# Normal flow: go to state
 				user.step = "ask_state"
 				await session.commit()
 				# Prompt states list
