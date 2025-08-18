@@ -30,6 +30,7 @@ from src.context.messages.profileMiddleware.invalidCity import get_message as ge
 from src.context.messages.profileMiddleware.profileCompleted import get_message as get_profile_completed_message
 from src.context.messages.profileMiddleware.invalidCommand import get_message as get_invalid_command_message
 from src.context.messages.profileMiddleware.nameUpdated import get_message as get_name_updated_message
+from src.context.messages.profileMiddleware.genderUpdated import get_message as get_gender_updated_message
 from src.context.keyboards.reply.gender import build_keyboard as build_gender_kb, resolve_id_from_text as resolve_gender_id
 from src.context.keyboards.reply.age import build_keyboard as build_age_kb, resolve_id_from_text as resolve_age_id
 from src.context.keyboards.reply.state import build_keyboard as build_state_kb, resolve_id_from_text as resolve_state_id
@@ -122,7 +123,7 @@ class ProfileMiddleware(BaseMiddleware):
 					if getattr(user, "step", "start") == "ask_name" or profile.name is None:
 						await event.answer(get_enter_name_message(), reply_markup=ReplyKeyboardRemove())
 						return None
-					elif getattr(user, "step", "start") == "ask_gender" or profile.is_female is None:
+					elif getattr(user, "step", "start") in {"ask_gender", "edit_gender"} or profile.is_female is None:
 						gender_kb, _ = build_gender_kb()
 						await event.answer(get_choose_gender_message(), reply_markup=gender_kb)
 						return None
@@ -209,9 +210,9 @@ class ProfileMiddleware(BaseMiddleware):
 				await event.answer(get_choose_gender_message(), reply_markup=gender_kb)
 				return None
 
-			# Step 2: gender
-			if profile.is_female is None:
-				if user.step != "ask_gender":
+			# Step 2: gender (and edit flow)
+			if profile.is_female is None or getattr(user, "step", "start") == "edit_gender":
+				if user.step not in {"ask_gender", "edit_gender"}:
 					user.step = "ask_gender"
 					await session.commit()
 					gender_kb, _ = build_gender_kb()
@@ -228,7 +229,26 @@ class ProfileMiddleware(BaseMiddleware):
 					gender_kb, _ = build_gender_kb()
 					await event.answer(get_invalid_gender_message(), reply_markup=gender_kb)
 					return None
-				# Next: ask age
+				# If this was edit flow, finish here with success + start
+				if getattr(user, "step", "start") == "edit_gender":
+					user.step = "start"
+					await session.commit()
+					await event.answer(get_gender_updated_message(), reply_markup=ReplyKeyboardRemove())
+					# send /start
+					name_display = None
+					if isinstance(event, Message) and event.from_user:
+						name_display = event.from_user.first_name or event.from_user.username
+					start_text = get_start_message(name_display)
+					kb, _ = build_main_kb()
+					await event.answer(
+						start_text,
+						reply_markup=kb,
+						parse_mode="Markdown",
+						link_preview_options=LinkPreviewOptions(is_disabled=True),
+					)
+					data["profile_ok"] = False
+					return None
+				# Next: ask age (normal flow)
 				user.step = "ask_age"
 				await session.commit()
 				age_kb, _ = build_age_kb()

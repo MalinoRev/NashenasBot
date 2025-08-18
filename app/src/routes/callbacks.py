@@ -134,6 +134,10 @@ async def handle_any_callback(callback: CallbackQuery) -> None:
 		from src.handlers.callbacks.profile_edit_name import handle_profile_edit_name
 		await handle_profile_edit_name(callback)
 		return
+	if data == "profile_edit:gender":
+		from src.handlers.callbacks.profile_edit_gender import handle_profile_edit_gender
+		await handle_profile_edit_gender(callback)
+		return
 	if data == "advanced:silent_mode":
 		from src.handlers.callbacks.advanced_silent_mode import handle_advanced_silent_mode
 		await handle_advanced_silent_mode(callback)
