@@ -38,18 +38,13 @@ async def handle_text_reply(message: Message) -> None:
 			# Pick the best quality photo (last size)
 			photo_sizes = message.photo
 			file_id = photo_sizes[-1].file_id
-			# Download to storage path
-			avatars_dir = Path(__file__).resolve().parents[2] / "storage" / "avatars"
+			# Download to storage path (use aiogram's download helper for reliability in container)
+			avatars_dir = Path("src") / "storage" / "avatars"
 			avatars_dir.mkdir(parents=True, exist_ok=True)
 			file_path = avatars_dir / f"{user.id}.jpg"
 			bot = message.bot
-			try:
-				from aiogram.types import BufferedInputFile
-			except Exception:
-				BufferedInputFile = None  # not used directly
-			# Use Telegram API to download file
-			file = await bot.get_file(file_id)
-			await bot.download_file(file.file_path, destination=str(file_path))
+			# Use Telegram API to download file by id
+			await bot.download(file_id, destination=str(file_path))
 			# Reset step
 			user.step = "start"
 			await session.commit()

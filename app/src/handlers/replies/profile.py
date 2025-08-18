@@ -1,5 +1,6 @@
 from sqlalchemy import select, func
 from aiogram.types import FSInputFile
+from pathlib import Path
 
 from src.core.database import get_session
 from src.databases.users import User
@@ -44,8 +45,30 @@ async def handle_profile(user_id: int) -> dict:
 			like_count=likes_count,
 			unique_id=unique_id,
 		)
-		# Use path relative to container workdir (/app)
-		photo_path = "src/context/resources/images/noimage-girl.jpg" if (profile and profile.is_female) else "src/context/resources/images/noimage-boy.jpg"
+		# Prefer user custom avatar if exists under src/storage/avatars/{user_db_id}.jpg
+		# Resolve inside container relative to app root; check multiple known locations
+		avatar_dirs = [
+			(Path("storage") / "avatars").resolve(),
+			(Path("src") / "storage" / "avatars").resolve(),
+		]
+		photo_path = None
+		for avatars_dir in avatar_dirs:
+			candidates = [
+				avatars_dir / f"{user.id}.jpg",
+				avatars_dir / f"{user.id}.jpeg",
+				avatars_dir / f"{user.id}.png",
+			]
+			custom_path = next((p for p in candidates if p.exists()), None)
+			if custom_path is None and avatars_dir.exists():
+				for p in avatars_dir.glob(f"{user.id}.*"):
+					custom_path = p
+					break
+			if custom_path is not None and custom_path.exists():
+				photo_path = str(custom_path.resolve())
+				break
+		# Fallback to default gender-based images
+		if not photo_path:
+			photo_path = "src/context/resources/images/noimage-girl.jpg" if (profile and profile.is_female) else "src/context/resources/images/noimage-boy.jpg"
 		keyboard = build_profile_keyboard(is_like_active=bool(getattr(user, "can_get_likes", True)))
 		return {"photo_path": photo_path, "caption": caption, "reply_markup": keyboard}
 
