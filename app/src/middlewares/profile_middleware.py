@@ -8,6 +8,7 @@ from aiogram.types import (
 	Message,
 	ReplyKeyboardMarkup,
 	ReplyKeyboardRemove,
+    LinkPreviewOptions,
 )
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -28,11 +29,13 @@ from src.context.messages.profileMiddleware.chooseCity import get_message as get
 from src.context.messages.profileMiddleware.invalidCity import get_message as get_invalid_city_message
 from src.context.messages.profileMiddleware.profileCompleted import get_message as get_profile_completed_message
 from src.context.messages.profileMiddleware.invalidCommand import get_message as get_invalid_command_message
+from src.context.messages.profileMiddleware.nameUpdated import get_message as get_name_updated_message
 from src.context.keyboards.reply.gender import build_keyboard as build_gender_kb, resolve_id_from_text as resolve_gender_id
 from src.context.keyboards.reply.age import build_keyboard as build_age_kb, resolve_id_from_text as resolve_age_id
 from src.context.keyboards.reply.state import build_keyboard as build_state_kb, resolve_id_from_text as resolve_state_id
 from src.context.keyboards.reply.city import build_keyboard as build_city_kb, resolve_id_from_text as resolve_city_id
 from src.context.keyboards.reply.mainButtons import build_keyboard as build_main_kb
+from src.context.messages.commands.start import get_message as get_start_message
 from src.databases.users import User
 from src.databases.states import State
 from src.databases.cities import City
@@ -113,6 +116,9 @@ class ProfileMiddleware(BaseMiddleware):
 						return None
 					await event.answer(get_invalid_command_message(), reply_markup=ReplyKeyboardRemove())
 					# Re-send the expected prompt for the current step
+					if getattr(user, "step", "start") == "edit_name":
+						await event.answer(get_enter_name_message(), reply_markup=ReplyKeyboardRemove())
+						return None
 					if getattr(user, "step", "start") == "ask_name" or profile.name is None:
 						await event.answer(get_enter_name_message(), reply_markup=ReplyKeyboardRemove())
 						return None
@@ -151,6 +157,34 @@ class ProfileMiddleware(BaseMiddleware):
 				user.step = "ask_name"
 				await session.commit()
 				await event.answer(get_enter_name_message(), reply_markup=ReplyKeyboardRemove())
+				return None
+
+			# Edit flow: change name when step is 'edit_name'
+			if getattr(user, "step", "start") == "edit_name":
+				if not text:
+					await event.answer(get_invalid_name_message(), reply_markup=ReplyKeyboardRemove())
+					return None
+				persian_name_pattern = r"^[\u0600-\u06FF\u200c\s]+$"
+				if not re.match(persian_name_pattern, text):
+					await event.answer(get_invalid_name_non_persian_message(), reply_markup=ReplyKeyboardRemove())
+					return None
+				profile.name = text
+				user.step = "start"
+				await session.commit()
+				await event.answer(get_name_updated_message(), reply_markup=ReplyKeyboardRemove())
+				# Also send /start exactly as elsewhere
+				name_display = None
+				if isinstance(event, Message) and event.from_user:
+					name_display = event.from_user.first_name or event.from_user.username
+				start_text = get_start_message(name_display)
+				kb, _ = build_main_kb()
+				await event.answer(
+					start_text,
+					reply_markup=kb,
+					parse_mode="Markdown",
+					link_preview_options=LinkPreviewOptions(is_disabled=True),
+				)
+				data["profile_ok"] = False
 				return None
 
 			# Step 1: name
