@@ -9,6 +9,7 @@ from src.middlewares.auth_middleware import AuthMiddleware
 from src.middlewares.profile_middleware import ProfileMiddleware
 from src.middlewares.channel_join_middleware import ChannelJoinMiddleware
 from src.middlewares.processing_toast_middleware import ProcessingToastMiddleware
+from src.middlewares.profile_completion_middleware import ProfileCompletionMiddleware
 
 
 def build_dispatcher() -> Dispatcher:
@@ -18,6 +19,7 @@ def build_dispatcher() -> Dispatcher:
 	auth = AuthMiddleware()
 	profile = ProfileMiddleware()
 	channels_guard = ChannelJoinMiddleware()
+	profile_completion = ProfileCompletionMiddleware()
 	# Processing toast must run first
 	dp.message.middleware(processing)
 	dp.callback_query.middleware(processing)
@@ -29,6 +31,9 @@ def build_dispatcher() -> Dispatcher:
 	# Channel membership check MUST run after other middlewares
 	dp.message.middleware(channels_guard)
 	dp.callback_query.middleware(channels_guard)
+	# Profile completion reward should run last
+	dp.message.middleware(profile_completion)
+	dp.callback_query.middleware(profile_completion)
 	# Attach routers
 	dp.include_router(commands_router)
 	dp.include_router(callbacks_router)
