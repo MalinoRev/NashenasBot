@@ -17,6 +17,7 @@ class UserFilter(Base):
 	only_males: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
 	only_females: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
 	same_state: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+	same_city: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
 	distance_limit: Mapped[int | None] = mapped_column(Integer, nullable=True)
 	age_from: Mapped[int | None] = mapped_column(Integer, nullable=True)
 	age_until: Mapped[int | None] = mapped_column(Integer, nullable=True)
