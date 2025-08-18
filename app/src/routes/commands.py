@@ -248,6 +248,29 @@ async def link_command(message: Message) -> None:
 
 # /credit equivalent of main:coin
 @router.message(Command("credit"))
+async def credit_command_any_step(message: Message) -> None:
+	# Allow /credit outside of start step as well (e.g., during searching)
+	from src.handlers.replies.coin import handle_coin
+	from src.core.database import get_session
+	from src.databases.users import User
+	from sqlalchemy import select
+
+	user_id = message.from_user.id if message.from_user else 0
+	async with get_session() as session:
+		user: User | None = await session.scalar(select(User).where(User.user_id == user_id))
+		if not user:
+			return
+		# If user is in start, let the original handler below process it (to keep parity with main:coin)
+		if user.step == "start":
+			return
+
+	result = await handle_coin(user_id)
+	await message.answer(result.get("text", ""), reply_markup=result.get("reply_markup"))
+	return
+
+
+# /credit equivalent of main:coin (only when step == start)
+@router.message(Command("credit"))
 async def credit_command(message: Message) -> None:
 	from src.handlers.replies.coin import handle_coin
 	from src.core.database import get_session
