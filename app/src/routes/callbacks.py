@@ -130,6 +130,16 @@ async def handle_any_callback(callback: CallbackQuery) -> None:
 		from src.handlers.callbacks.advanced_silent_mode import handle_advanced_silent_mode
 		await handle_advanced_silent_mode(callback)
 		return
+	if data == "advanced:chat_filter":
+		from src.handlers.callbacks.advanced_chat_filter import handle_advanced_chat_filter
+		await handle_advanced_chat_filter(callback)
+		return
+	if data.startswith("advanced_filter_gender:"):
+		from src.handlers.callbacks.advanced_chat_filter_gender_set import (
+			handle_advanced_chat_filter_gender_set,
+		)
+		await handle_advanced_chat_filter_gender_set(callback)
+		return
 	if data.startswith("advanced_silent:"):
 		from src.handlers.callbacks.advanced_silent_mode_set import handle_advanced_silent_mode_set
 		await handle_advanced_silent_mode_set(callback)
