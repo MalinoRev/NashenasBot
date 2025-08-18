@@ -12,6 +12,7 @@ from src.context.messages.callbacks.random_match import (
 	get_searching_message_nearby_on,
 	get_searching_message_state_on,
 )
+from src.context.keyboards.reply.random_match import build_cancel_keyboard
 
 
 async def handle_on_command(message: Message) -> None:
@@ -49,8 +50,9 @@ async def handle_on_command(message: Message) -> None:
 			text = get_searching_message_nearby_on()
 		elif queue.filter_only_state:
 			text = get_searching_message_state_on()
-		# Send new searching message
-		sent = await message.answer(text)
+		# Send new searching message with cancel keyboard
+		cancel_kb, _ = build_cancel_keyboard()
+		sent = await message.answer(text, reply_markup=cancel_kb)
 		# Update stored message id
 		queue.message_id = sent.message_id
 		await session.commit()
