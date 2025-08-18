@@ -126,6 +126,10 @@ async def handle_any_callback(callback: CallbackQuery) -> None:
 		from src.handlers.callbacks.profile_advanced_settings import handle_profile_advanced_settings
 		await handle_profile_advanced_settings(callback)
 		return
+	if data == "profile:edit":
+		from src.handlers.callbacks.profile_edit_menu import handle_profile_edit_menu
+		await handle_profile_edit_menu(callback)
+		return
 	if data == "advanced:silent_mode":
 		from src.handlers.callbacks.advanced_silent_mode import handle_advanced_silent_mode
 		await handle_advanced_silent_mode(callback)
