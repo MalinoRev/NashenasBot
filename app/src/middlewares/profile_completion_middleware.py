@@ -12,6 +12,7 @@ from src.databases.rewards import Reward
 from src.context.messages.rewards.profile_completion_success import (
 	format_message as format_reward_message,
 )
+from pathlib import Path
 
 
 class ProfileCompletionMiddleware(BaseMiddleware):
@@ -49,6 +50,29 @@ class ProfileCompletionMiddleware(BaseMiddleware):
 				and profile.city is not None
 			)
 			if not is_complete:
+				return await handler(event, data)
+
+			# Extra condition: user must have an uploaded avatar file
+			avatar_dirs = [
+				(Path("storage") / "avatars").resolve(),
+				(Path("src") / "storage" / "avatars").resolve(),
+			]
+			avatar_ok = False
+			for avatars_dir in avatar_dirs:
+				candidates = [
+					avatars_dir / f"{user.id}.jpg",
+					avatars_dir / f"{user.id}.jpeg",
+					avatars_dir / f"{user.id}.png",
+				]
+				custom_path = next((p for p in candidates if p.exists()), None)
+				if custom_path is None and avatars_dir.exists():
+					for p in avatars_dir.glob(f"{user.id}.*"):
+						custom_path = p
+						break
+				if custom_path is not None and custom_path.exists():
+					avatar_ok = True
+					break
+			if not avatar_ok:
 				return await handler(event, data)
 
 			# Check if user has already received the profile completion reward
