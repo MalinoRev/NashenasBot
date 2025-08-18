@@ -37,7 +37,8 @@ async def handle_coin_buy(callback: CallbackQuery) -> None:
 			return
 
 	try:
-		url = await create_payment_link(user_id_tg, int(price.price), f"خرید {price.amount} سکه")
+		# Persist product as a machine-readable identifier for callback processing
+		url = await create_payment_link(user_id_tg, int(price.price), f"coin:{price.amount}")
 	except Exception:
 		await callback.message.answer(get_error_message())
 		await callback.answer()
