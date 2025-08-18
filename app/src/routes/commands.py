@@ -207,6 +207,7 @@ async def profile_command(message: Message) -> None:
 	from src.core.database import get_session
 	from src.databases.users import User
 	from sqlalchemy import select
+	from src.context.messages.commands.id import get_message as get_id_message
 
 	user_id = message.from_user.id if message.from_user else 0
 	async with get_session() as session:
@@ -261,6 +262,26 @@ async def credit_command(message: Message) -> None:
 
 	result = await handle_coin(user_id)
 	await message.answer(result.get("text", ""), reply_markup=result.get("reply_markup"))
+	return
+
+
+# /id -> send personal /user_UNIQUEID command
+@router.message(Command("id"))
+async def id_command(message: Message) -> None:
+	from src.core.database import get_session
+	from src.databases.users import User
+	from sqlalchemy import select
+	from src.context.messages.commands.id import get_message as get_id_message
+
+	user_id = message.from_user.id if message.from_user else 0
+	async with get_session() as session:
+		user: User | None = await session.scalar(select(User).where(User.user_id == user_id))
+		if not user:
+			return
+		# Optionally gate to start like other main commands
+		if user.step != "start":
+			return
+	await message.answer(get_id_message(user.unique_id))
 	return
 
 
