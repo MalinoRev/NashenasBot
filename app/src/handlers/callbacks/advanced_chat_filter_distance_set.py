@@ -4,6 +4,12 @@ from sqlalchemy import select
 from src.core.database import get_session
 from src.databases.users import User
 from src.databases.user_filters import UserFilter
+from src.context.messages.callbacks.advanced_chat_filter_age_from import (
+	get_message as get_age_from_message,
+)
+from src.context.keyboards.inline.advanced_chat_filter_age_from import (
+	build_keyboard as build_age_from_keyboard,
+)
 
 
 async def handle_advanced_chat_filter_distance_set(callback: CallbackQuery) -> None:
@@ -52,6 +58,12 @@ async def handle_advanced_chat_filter_distance_set(callback: CallbackQuery) -> N
 
 		await session.commit()
 
-	await callback.answer("فیلتر فاصله ذخیره شد.")
+	# Advance to age-from step
+	try:
+		await callback.message.delete()
+	except Exception:
+		pass
+	await callback.message.answer(get_age_from_message(), reply_markup=build_age_from_keyboard())
+	await callback.answer()
 
 

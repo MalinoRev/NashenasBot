@@ -146,6 +146,18 @@ async def handle_any_callback(callback: CallbackQuery) -> None:
 		)
 		await handle_advanced_chat_filter_distance_set(callback)
 		return
+	if data.startswith("advanced_filter_age_from:"):
+		from src.handlers.callbacks.advanced_chat_filter_age_from_set import (
+			handle_advanced_chat_filter_age_from_set,
+		)
+		await handle_advanced_chat_filter_age_from_set(callback)
+		return
+	if data.startswith("advanced_filter_age_until:"):
+		from src.handlers.callbacks.advanced_chat_filter_age_until_set import (
+			handle_advanced_chat_filter_age_until_set,
+		)
+		await handle_advanced_chat_filter_age_until_set(callback)
+		return
 	if data.startswith("advanced_silent:"):
 		from src.handlers.callbacks.advanced_silent_mode_set import handle_advanced_silent_mode_set
 		await handle_advanced_silent_mode_set(callback)
