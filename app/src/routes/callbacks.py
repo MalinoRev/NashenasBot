@@ -146,6 +146,14 @@ async def handle_any_callback(callback: CallbackQuery) -> None:
 		from src.handlers.callbacks.profile_edit_state_city import handle_profile_edit_state_city
 		await handle_profile_edit_state_city(callback)
 		return
+	if data == "profile_edit:photo":
+		from src.handlers.callbacks.profile_edit_photo import handle_profile_edit_photo
+		await handle_profile_edit_photo(callback)
+		return
+	if data == "profile_edit_photo:cancel":
+		from src.handlers.callbacks.profile_edit_photo_cancel import handle_profile_edit_photo_cancel
+		await handle_profile_edit_photo_cancel(callback)
+		return
 	if data == "advanced:silent_mode":
 		from src.handlers.callbacks.advanced_silent_mode import handle_advanced_silent_mode
 		await handle_advanced_silent_mode(callback)

@@ -20,6 +20,49 @@ async def handle_text_reply(message: Message) -> None:
 
 	text = message.text or ""
 
+	# Handle edit photo flow: accept only photo
+	from src.core.database import get_session
+	from src.databases.users import User
+	from sqlalchemy import select
+	from src.context.messages.profileMiddleware.invalidPhoto import get_message as get_invalid_photo
+	from src.context.messages.profileMiddleware.photoSaved import get_message as get_photo_saved
+	from pathlib import Path
+	from aiogram.types import LinkPreviewOptions
+
+	async with get_session() as session:
+		user: User | None = await session.scalar(select(User).where(User.user_id == (message.from_user.id if message.from_user else 0)))
+		if user and user.step == "edit_photo":
+			if not message.photo:
+				await message.answer(get_invalid_photo())
+				return
+			# Pick the best quality photo (last size)
+			photo_sizes = message.photo
+			file_id = photo_sizes[-1].file_id
+			# Download to storage path
+			avatars_dir = Path(__file__).resolve().parents[2] / "storage" / "avatars"
+			avatars_dir.mkdir(parents=True, exist_ok=True)
+			file_path = avatars_dir / f"{user.id}.jpg"
+			bot = message.bot
+			try:
+				from aiogram.types import BufferedInputFile
+			except Exception:
+				BufferedInputFile = None  # not used directly
+			# Use Telegram API to download file
+			file = await bot.get_file(file_id)
+			await bot.download_file(file.file_path, destination=str(file_path))
+			# Reset step
+			user.step = "start"
+			await session.commit()
+			# Send success + /start
+			await message.answer(get_photo_saved())
+			from src.context.messages.commands.start import get_message as get_start_message
+			from src.context.keyboards.reply.mainButtons import build_keyboard as build_main_kb
+			name = (message.from_user.first_name if message.from_user else None) or (message.from_user.username if message.from_user else None)
+			start_text = get_start_message(name)
+			kb, _ = build_main_kb()
+			await message.answer(start_text, reply_markup=kb, parse_mode="Markdown", link_preview_options=LinkPreviewOptions(is_disabled=True))
+			return
+
 	# Handle sending location (reply button sends location payload)
 	if message.location is not None:
 		from src.core.database import get_session
