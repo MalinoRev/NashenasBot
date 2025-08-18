@@ -1,4 +1,6 @@
-from aiogram.types import CallbackQuery
+import os
+from pathlib import Path
+from aiogram.types import CallbackQuery, FSInputFile
 from sqlalchemy import select
 
 from src.core.database import get_session
@@ -10,6 +12,7 @@ from src.context.messages.callbacks.coin_buy import (
 	get_link_message,
 	get_error_message,
 )
+from src.context.messages.callbacks.coin_gateway_notice import get_caption as get_gateway_caption
 
 
 async def handle_coin_buy(callback: CallbackQuery) -> None:
@@ -35,6 +38,16 @@ async def handle_coin_buy(callback: CallbackQuery) -> None:
 		if not price:
 			await callback.answer()
 			return
+
+	# First, send gateway notice image with caption
+	image_path = str(
+		Path(__file__).resolve().parents[2] / "context" / "resources" / "images" / "gateway.jpg"
+	)
+	try:
+		photo = FSInputFile(image_path)
+		await callback.message.answer_photo(photo, caption=get_gateway_caption())
+	except Exception:
+		pass
 
 	try:
 		# Persist product as a machine-readable identifier for callback processing
