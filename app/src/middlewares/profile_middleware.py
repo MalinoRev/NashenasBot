@@ -32,6 +32,7 @@ from src.context.messages.profileMiddleware.invalidCommand import get_message as
 from src.context.messages.profileMiddleware.nameUpdated import get_message as get_name_updated_message
 from src.context.messages.profileMiddleware.genderUpdated import get_message as get_gender_updated_message
 from src.context.messages.profileMiddleware.ageUpdated import get_message as get_age_updated_message
+from src.context.messages.profileMiddleware.stateCityUpdated import get_message as get_state_city_updated_message
 from src.context.keyboards.reply.gender import build_keyboard as build_gender_kb, resolve_id_from_text as resolve_gender_id
 from src.context.keyboards.reply.age import build_keyboard as build_age_kb, resolve_id_from_text as resolve_age_id
 from src.context.keyboards.reply.state import build_keyboard as build_state_kb, resolve_id_from_text as resolve_state_id
@@ -132,13 +133,13 @@ class ProfileMiddleware(BaseMiddleware):
 						age_kb, _ = build_age_kb()
 						await event.answer(get_choose_age_message(), reply_markup=age_kb)
 						return None
-					elif getattr(user, "step", "start") == "ask_state" or profile.state is None:
+					elif getattr(user, "step", "start") in {"ask_state", "edit_state"} or profile.state is None:
 						states: List[State] = list(await session.scalars(select(State).order_by(State.state_name)))
 						if states:
 							state_kb, _ = build_state_kb([s.state_name for s in states])
 							await event.answer(get_choose_state_message(), reply_markup=state_kb)
 							return None
-					elif getattr(user, "step", "start") == "ask_city" or profile.city is None:
+					elif getattr(user, "step", "start") in {"ask_city", "edit_city"} or profile.city is None:
 						state_id = profile.state
 						if state_id:
 							cities: List[City] = list(
@@ -359,9 +360,9 @@ class ProfileMiddleware(BaseMiddleware):
 				await event.answer(get_choose_state_message(), reply_markup=state_kb)
 				return None
 
-			# Step 4: state
-			if profile.state is None:
-				if user.step != "ask_state":
+			# Step 4: state (and edit flow)
+			if profile.state is None or getattr(user, "step", "start") == "edit_state":
+				if user.step not in {"ask_state", "edit_state"}:
 					user.step = "ask_state"
 					await session.commit()
 					# Re-show states
@@ -386,16 +387,35 @@ class ProfileMiddleware(BaseMiddleware):
 					await event.answer(get_invalid_state_message(), reply_markup=state_kb3)
 					return None
 				profile.state = state.id
-				user.step = "ask_city"
+				# If editing, proceed to edit city prompt
+				if getattr(user, "step", "start") == "edit_state":
+					user.step = "edit_city"
+				else:
+					user.step = "ask_city"
 				await session.commit()
 				# Prompt cities for the state
 				cities: List[City] = list(
 					await session.scalars(select(City).where(City.state_id == state.id).order_by(City.city_name))
 				)
 				if not cities:
-					# No cities; finish
+					# No cities; finish (if editing, success, else normal finish)
 					user.step = "start"
 					await session.commit()
+					if getattr(user, "step", "start") in {"edit_state", "edit_city"}:
+						await event.answer(get_state_city_updated_message(), reply_markup=ReplyKeyboardRemove())
+						name_display = None
+						if isinstance(event, Message) and event.from_user:
+							name_display = event.from_user.first_name or event.from_user.username
+						start_text = get_start_message(name_display)
+						kb, _ = build_main_kb()
+						await event.answer(
+							start_text,
+							reply_markup=kb,
+							parse_mode="Markdown",
+							link_preview_options=LinkPreviewOptions(is_disabled=True),
+						)
+						data["profile_ok"] = False
+						return None
 					await event.answer("پروفایل تکمیل شد.", reply_markup=ReplyKeyboardRemove())
 					data["profile_ok"] = True
 					return await handler(event, data)
@@ -403,9 +423,9 @@ class ProfileMiddleware(BaseMiddleware):
 				await event.answer(get_choose_city_message(), reply_markup=city_kb)
 				return None
 
-			# Step 4: city
-			if profile.city is None:
-				if user.step != "ask_city":
+			# Step 4: city (and edit flow)
+			if profile.city is None or getattr(user, "step", "start") == "edit_city":
+				if user.step not in {"ask_city", "edit_city"}:
 					user.step = "ask_city"
 					await session.commit()
 					await event.answer(get_choose_city_message(), reply_markup=ReplyKeyboardRemove())
@@ -438,10 +458,26 @@ class ProfileMiddleware(BaseMiddleware):
 				profile.city = city.id
 				user.step = "start"
 				await session.commit()
-				# Send profile completed with main buttons
+				# If this was edit flow, send success + /start, else complete profile
+				if getattr(user, "step", "start") == "start" and profile.name is not None and profile.is_female is not None and profile.age is not None:
+					# Edited flow path ends here
+					await event.answer(get_state_city_updated_message(), reply_markup=ReplyKeyboardRemove())
+					name_display = None
+					if isinstance(event, Message) and event.from_user:
+						name_display = event.from_user.first_name or event.from_user.username
+					start_text = get_start_message(name_display)
+					kb, _ = build_main_kb()
+					await event.answer(
+						start_text,
+						reply_markup=kb,
+						parse_mode="Markdown",
+						link_preview_options=LinkPreviewOptions(is_disabled=True),
+					)
+					data["profile_ok"] = False
+					return None
+				# Normal flow completion
 				main_kb, _ = build_main_kb()
 				await event.answer(get_profile_completed_message(), reply_markup=main_kb)
-				# Prevent further handlers for this last message
 				data["profile_ok"] = False
 				return None
 
