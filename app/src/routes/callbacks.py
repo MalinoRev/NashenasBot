@@ -140,6 +140,12 @@ async def handle_any_callback(callback: CallbackQuery) -> None:
 		)
 		await handle_advanced_chat_filter_gender_set(callback)
 		return
+	if data.startswith("advanced_filter_distance:"):
+		from src.handlers.callbacks.advanced_chat_filter_distance_set import (
+			handle_advanced_chat_filter_distance_set,
+		)
+		await handle_advanced_chat_filter_distance_set(callback)
+		return
 	if data.startswith("advanced_silent:"):
 		from src.handlers.callbacks.advanced_silent_mode_set import handle_advanced_silent_mode_set
 		await handle_advanced_silent_mode_set(callback)

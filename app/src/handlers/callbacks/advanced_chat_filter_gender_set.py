@@ -4,6 +4,12 @@ from sqlalchemy import select
 from src.core.database import get_session
 from src.databases.users import User
 from src.databases.user_filters import UserFilter
+from src.context.messages.callbacks.advanced_chat_filter_distance import (
+	get_message as get_distance_message,
+)
+from src.context.keyboards.inline.advanced_chat_filter_distance import (
+	build_keyboard as build_distance_keyboard,
+)
 
 
 async def handle_advanced_chat_filter_gender_set(callback: CallbackQuery) -> None:
@@ -34,6 +40,12 @@ async def handle_advanced_chat_filter_gender_set(callback: CallbackQuery) -> Non
 
 		await session.commit()
 
-	await callback.answer("فیلتر جنسیت ذخیره شد.")
+	# Go to step 2: distance prompt
+	try:
+		await callback.message.delete()
+	except Exception:
+		pass
+	await callback.message.answer(get_distance_message(), reply_markup=build_distance_keyboard())
+	await callback.answer()
 
 
