@@ -7,6 +7,7 @@ from .engine import engine
 # Import models so that they are registered on Base.metadata
 from . import states as _states  # noqa: F401
 from . import users as _users  # noqa: F401
+from . import chats as _chats  # noqa: F401
 
 
 logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
