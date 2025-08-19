@@ -232,6 +232,34 @@ async def handle_any_callback(callback: CallbackQuery) -> None:
 		from src.handlers.callbacks.search_same_age import handle_search_same_age
 		await handle_search_same_age(callback)
 		return
+	if data == "search:new_users":
+		from src.context.messages.callbacks.search_new_users import get_message as get_msg
+		from src.context.keyboards.inline.search_new_users import build_keyboard as build_kb
+		try:
+			await callback.message.delete()
+		except Exception:
+			pass
+		await callback.message.answer(get_msg(), reply_markup=build_kb())
+		await callback.answer()
+		return
+	if data.startswith("search_new_users:"):
+		from src.handlers.callbacks.search_new_users import handle_search_new_users
+		await handle_search_new_users(callback)
+		return
+	if data == "search:no_chats":
+		from src.context.messages.callbacks.search_no_chats import get_message as get_msg
+		from src.context.keyboards.inline.search_no_chats import build_keyboard as build_kb
+		try:
+			await callback.message.delete()
+		except Exception:
+			pass
+		await callback.message.answer(get_msg(), reply_markup=build_kb())
+		await callback.answer()
+		return
+	if data.startswith("search_no_chats:"):
+		from src.handlers.callbacks.search_no_chats import handle_search_no_chats
+		await handle_search_no_chats(callback)
+		return
 	if data == "coin:buy_vip":
 		from src.handlers.callbacks.coin_buy_vip import handle_coin_buy_vip
 		await handle_coin_buy_vip(callback)
