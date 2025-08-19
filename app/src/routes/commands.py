@@ -324,6 +324,8 @@ async def instagram_command(message: Message) -> None:
 async def unknown_command(message: Message) -> None:
 	if message.text and message.text.startswith("/start"):
 		return
-	await message.answer("Unknown command.")
+	await message.answer(
+		"❌ دستور مورد نظر یافت نشد\nجهت مشاهده راهنما استفاده ربات، دستور /help را بفرستید."
+	)
 
 

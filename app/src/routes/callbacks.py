@@ -221,6 +221,6 @@ async def handle_any_callback(callback: CallbackQuery) -> None:
 		await handle_coin_buy(callback)
 		return
 	await callback.answer()
-	await callback.message.answer("Callback received, but not implemented yet.")
+	await callback.message.answer("❌ در هنگام پردازش درخواست شما خطایی رخ داد ❌")
 
 
