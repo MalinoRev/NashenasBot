@@ -50,8 +50,6 @@ async def handle_text_reply(message: Message) -> None:
 			await session.commit()
 			# Send success + /start
 			await message.answer(get_photo_saved())
-			from src.context.messages.commands.start import get_message as get_start_message
-			from src.context.keyboards.reply.mainButtons import build_keyboard as build_main_kb
 			name = (message.from_user.first_name if message.from_user else None) or (message.from_user.username if message.from_user else None)
 			start_text = get_start_message(name)
 			kb, _ = build_main_kb()
