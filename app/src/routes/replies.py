@@ -148,7 +148,9 @@ async def handle_text_reply(message: Message) -> None:
 
 	# Handle nearby back reply button
 	nearby_id = resolve_nearby_reply_id(text)
-	if nearby_id == "nearby:back" or nearby_id == "search:back":
+	from src.context.keyboards.reply.special_contact import resolve_id_from_text as resolve_special_back
+	special_id = resolve_special_back(text)
+	if nearby_id == "nearby:back" or nearby_id == "search:back" or special_id == "special:back":
 		from src.core.database import get_session
 		from src.databases.users import User
 		from sqlalchemy import select
@@ -158,8 +160,8 @@ async def handle_text_reply(message: Message) -> None:
 			user: User | None = await session.scalar(select(User).where(User.user_id == user_id))
 			if not user:
 				return
-			# Allow both sending_location and search_sending_location to go back
-			if user.step not in ("sending_location", "search_sending_location"):
+			# Allow both sending_location and search_sending_location and special_contact to go back
+			if user.step not in ("sending_location", "search_sending_location", "search_special_contact"):
 				return
 			user.step = "start"
 			await session.commit()
@@ -174,6 +176,53 @@ async def handle_text_reply(message: Message) -> None:
 			link_preview_options=LinkPreviewOptions(is_disabled=True),
 		)
 		return
+
+	# Handle special contact flow input
+	from src.core.database import get_session as _get_session_sc
+	from src.databases.users import User as _User_sc
+	from sqlalchemy import select as _select_sc
+	if text or message.forward_from or message.contact:
+		user_id_sc = message.from_user.id if message.from_user else 0
+		async with _get_session_sc() as session_sc:
+			user_sc: _User_sc | None = await session_sc.scalar(_select_sc(_User_sc).where(_User_sc.user_id == user_id_sc))
+			if user_sc and user_sc.step == "search_special_contact":
+				# Try to resolve target user's internal id by 3 ways
+				tg_numeric_id: int | None = None
+				# Way 1: forwarded message contains original sender id
+				if getattr(message, "forward_from", None) and message.forward_from:
+					if getattr(message.forward_from, "id", None):
+						tg_numeric_id = int(message.forward_from.id)
+				# Way 2: contact payload contains user_id
+				if tg_numeric_id is None and getattr(message, "contact", None) and message.contact:
+					if getattr(message.contact, "user_id", None):
+						tg_numeric_id = int(message.contact.user_id)
+				# Way 3: pure numeric text id
+				if tg_numeric_id is None and text.isdigit():
+					tg_numeric_id = int(text)
+				# Lookup in users table by Telegram numeric id
+				from sqlalchemy import select as _select2
+				from src.databases.users import User as _User2
+				target_unique_id: str | None = None
+				if tg_numeric_id is not None:
+					u2: _User2 | None = await session_sc.scalar(_select2(_User2).where(_User2.user_id == tg_numeric_id))
+					if u2:
+						target_unique_id = u2.unique_id
+				# Reset step to start regardless
+				user_sc.step = "start"
+				await session_sc.commit()
+				# Build main keyboard
+				kb_main, _ = build_main_kb()
+				if target_unique_id:
+					await message.answer(
+						f"✅ کاربر عضو ربات است. برای مشاهده پروفایل این دستور را بفرستید:\n/user_{target_unique_id}",
+						reply_markup=kb_main,
+					)
+				else:
+					await message.answer(
+						"❌ کاربر یافت نشد یا عضو ربات نیست.",
+						reply_markup=kb_main,
+					)
+				return
 
 	main_id = resolve_main_id(text)
 	if main_id == "main:my_anon_link":

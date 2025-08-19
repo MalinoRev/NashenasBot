@@ -10,9 +10,9 @@ def build_keyboard() -> InlineKeyboardMarkup:
 		InlineKeyboardButton(text="🏛️ هم استانی", callback_data="search:same_province"),
 		InlineKeyboardButton(text="🧑‍🎓 هم سن ها", callback_data="search:same_age"),
 	])
-	rows.append([
-		InlineKeyboardButton(text="🛠️ جستجو پیشرفته", callback_data="search:advanced"),
-	])
+	# rows.append([
+	# 	InlineKeyboardButton(text="🛠️ جستجو پیشرفته", callback_data="search:advanced"),
+	# ])
 	rows.append([
 		InlineKeyboardButton(text="🆕 کاربران جدید", callback_data="search:new_users"),
 		InlineKeyboardButton(text="🚫 بدون چت ها", callback_data="search:no_chats"),

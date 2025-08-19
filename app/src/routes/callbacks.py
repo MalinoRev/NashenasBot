@@ -278,6 +278,42 @@ async def handle_any_callback(callback: CallbackQuery) -> None:
 		from src.handlers.callbacks.search_by_location import handle_search_by_location_request
 		await handle_search_by_location_request(callback)
 		return
+	if data == "search:special_contact":
+		from src.context.messages.callbacks.search_special_contact_prompt import get_message as get_msg
+		from sqlalchemy import select
+		from src.core.database import get_session
+		from src.databases.users import User
+		try:
+			await callback.message.delete()
+		except Exception:
+			pass
+		user_id = callback.from_user.id if callback.from_user else 0
+		async with get_session() as session:
+			user: User | None = await session.scalar(select(User).where(User.user_id == user_id))
+			if not user:
+				await callback.answer()
+				return
+			user.step = "search_special_contact"
+			await session.commit()
+		from src.context.keyboards.reply.special_contact import build_back_keyboard
+		kb, _ = build_back_keyboard()
+		await callback.message.answer(get_msg(), reply_markup=kb)
+		await callback.answer()
+		return
+	if data == "search:recent_chats":
+		from src.context.messages.callbacks.search_recent_chats import get_message as get_msg
+		from src.context.keyboards.inline.search_recent_chats import build_keyboard as build_kb
+		try:
+			await callback.message.delete()
+		except Exception:
+			pass
+		await callback.message.answer(get_msg(), reply_markup=build_kb())
+		await callback.answer()
+		return
+	if data.startswith("search_recent_chats:"):
+		from src.handlers.callbacks.search_recent_chats import handle_search_recent_chats
+		await handle_search_recent_chats(callback)
+		return
 	if data.startswith("search_by_location_gender:"):
 		# Retrieve temp coords and run location search with chosen gender
 		from sqlalchemy import select
