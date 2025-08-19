@@ -347,6 +347,10 @@ async def handle_any_callback(callback: CallbackQuery) -> None:
 		await callback.message.answer(text)
 		await callback.answer()
 		return
+	if data.startswith("profile_like:") or data.startswith("profile_block_toggle:") or data.startswith("profile_contact_toggle:"):
+		from src.handlers.callbacks.visitor_profile_actions import handle_visitor_profile_action
+		await handle_visitor_profile_action(callback)
+		return
 	if data == "coin:buy_vip":
 		from src.handlers.callbacks.coin_buy_vip import handle_coin_buy_vip
 		await handle_coin_buy_vip(callback)
