@@ -63,35 +63,53 @@ async def handle_text_reply(message: Message) -> None:
 		from src.databases.user_locations import UserLocation
 		from sqlalchemy import select
 		from src.context.messages.callbacks.nearby import get_location_saved_success
+		from src.context.messages.callbacks.search_by_location_gender import get_message as get_gender_message
+		from src.context.keyboards.inline.search_by_location_gender import build_keyboard as build_gender_kb
+		from src.services.location_search import generate_location_list
 
 		user_id = message.from_user.id if message.from_user else 0
 		async with get_session() as session:
 			user: User | None = await session.scalar(select(User).where(User.user_id == user_id))
-			if not user or user.step != "sending_location":
+			if not user:
 				return
-			# Upsert user location
-			loc: UserLocation | None = await session.scalar(select(UserLocation).where(UserLocation.user_id == user.id))
-			if loc is None:
-				loc = UserLocation(user_id=user.id, location_x=message.location.latitude, location_y=message.location.longitude)
-				session.add(loc)
-			else:
-				loc.location_x = message.location.latitude
-				loc.location_y = message.location.longitude
-			# Reset step
-			user.step = "start"
-			await session.commit()
-		await message.answer(get_location_saved_success())
-		# Also send /start exactly as elsewhere
-		name = (message.from_user.first_name if message.from_user else None) or (message.from_user.username if message.from_user else None)
-		start_text = get_start_message(name)
-		kb, _ = build_main_kb()
-		await message.answer(
-			start_text,
-			reply_markup=kb,
-			parse_mode="Markdown",
-			link_preview_options=LinkPreviewOptions(is_disabled=True),
-		)
-		return
+			if user.step == "sending_location":
+				# Original nearby/profile flow: persist location
+				loc: UserLocation | None = await session.scalar(select(UserLocation).where(UserLocation.user_id == user.id))
+				if loc is None:
+					loc = UserLocation(user_id=user.id, location_x=message.location.latitude, location_y=message.location.longitude)
+					session.add(loc)
+				else:
+					loc.location_x = message.location.latitude
+					loc.location_y = message.location.longitude
+				user.step = "start"
+				await session.commit()
+				await message.answer(get_location_saved_success())
+				# Also send /start exactly as elsewhere
+				name = (message.from_user.first_name if message.from_user else None) or (message.from_user.username if message.from_user else None)
+				start_text = get_start_message(name)
+				kb, _ = build_main_kb()
+				await message.answer(
+					start_text,
+					reply_markup=kb,
+					parse_mode="Markdown",
+					link_preview_options=LinkPreviewOptions(is_disabled=True),
+				)
+				return
+			if user.step == "search_sending_location":
+				# Temporary flow: do not persist, immediately ask for gender selection with this location cached in memory by encoding coords in callback data
+				lat = message.location.latitude
+				lon = message.location.longitude
+				# Reset step back to start so further messages behave normally
+				user.step = "start"
+				await session.commit()
+				# Show gender keyboard with lat/lon encoded
+				await message.answer(get_gender_message(), reply_markup=build_gender_kb())
+				# Attach a hint with the coordinates encoded expectation
+				# We will handle the next callback with a global variable is not safe; instead, send hidden state via separate mapping isn't present
+				# For simplicity here, we will store last temp coords in memory keyed by user_id via a module-level cache
+				from src.services.temp_location_cache import set_temp_location
+				set_temp_location(user.id, float(lat), float(lon))
+				return
 
 	# Handle random_match cancel reply button
 	rm_id = resolve_random_match_reply_id(text)

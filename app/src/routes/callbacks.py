@@ -260,6 +260,57 @@ async def handle_any_callback(callback: CallbackQuery) -> None:
 		from src.handlers.callbacks.search_no_chats import handle_search_no_chats
 		await handle_search_no_chats(callback)
 		return
+	if data == "search:popular":
+		from src.context.messages.callbacks.search_popular import get_message as get_msg
+		from src.context.keyboards.inline.search_popular import build_keyboard as build_kb
+		try:
+			await callback.message.delete()
+		except Exception:
+			pass
+		await callback.message.answer(get_msg(), reply_markup=build_kb())
+		await callback.answer()
+		return
+	if data.startswith("search_popular:"):
+		from src.handlers.callbacks.search_popular import handle_search_popular
+		await handle_search_popular(callback)
+		return
+	if data == "search:by_location":
+		from src.handlers.callbacks.search_by_location import handle_search_by_location_request
+		await handle_search_by_location_request(callback)
+		return
+	if data.startswith("search_by_location_gender:"):
+		# Retrieve temp coords and run location search with chosen gender
+		from sqlalchemy import select
+		from src.core.database import get_session
+		from src.databases.users import User
+		from src.services.temp_location_cache import get_temp_location
+		from src.services.location_search import generate_location_list
+
+		gender = "all"
+		if data.endswith(":male"):
+			gender = "boys"
+		elif data.endswith(":female"):
+			gender = "girls"
+		user_id = callback.from_user.id if callback.from_user else 0
+		async with get_session() as session:
+			user: User | None = await session.scalar(select(User).where(User.user_id == user_id))
+			if not user:
+				await callback.answer()
+				return
+		coords = get_temp_location(user.id)
+		try:
+			await callback.message.delete()
+		except Exception:
+			pass
+		if not coords:
+			await callback.message.answer("⚠️ ابتدا موقعیت مکانی خود را ارسال کنید.")
+			await callback.answer()
+			return
+		lat, lon = coords
+		text, ok = await generate_location_list(user_id, lat, lon, 100, gender)
+		await callback.message.answer(text)
+		await callback.answer()
+		return
 	if data == "coin:buy_vip":
 		from src.handlers.callbacks.coin_buy_vip import handle_coin_buy_vip
 		await handle_coin_buy_vip(callback)
