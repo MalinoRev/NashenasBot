@@ -204,6 +204,20 @@ async def handle_any_callback(callback: CallbackQuery) -> None:
 		from src.handlers.callbacks.advanced_alarms_toggle import handle_advanced_alarms_toggle
 		await handle_advanced_alarms_toggle(callback)
 		return
+	if data == "search:same_province":
+		from src.context.messages.callbacks.search_same_province import get_message as get_msg
+		from src.context.keyboards.inline.search_same_province import build_keyboard as build_kb
+		try:
+			await callback.message.delete()
+		except Exception:
+			pass
+		await callback.message.answer(get_msg(), reply_markup=build_kb())
+		await callback.answer()
+		return
+	if data.startswith("search_same_province:"):
+		from src.handlers.callbacks.search_same_province import handle_search_same_province
+		await handle_search_same_province(callback)
+		return
 	if data == "coin:buy_vip":
 		from src.handlers.callbacks.coin_buy_vip import handle_coin_buy_vip
 		await handle_coin_buy_vip(callback)
