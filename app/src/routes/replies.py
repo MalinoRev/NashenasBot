@@ -102,7 +102,12 @@ async def handle_text_reply(message: Message) -> None:
 				# Reset step back to start so further messages behave normally
 				user.step = "start"
 				await session.commit()
-				# Show gender keyboard with lat/lon encoded
+				# First, send a tiny message to restore main keyboard
+				name = (message.from_user.first_name if message.from_user else None) or (message.from_user.username if message.from_user else None)
+				start_text = get_start_message(name)
+				kb_main, _ = build_main_kb()
+				await message.answer("در حال پردازش...", reply_markup=kb_main)
+				# Then show gender keyboard
 				await message.answer(get_gender_message(), reply_markup=build_gender_kb())
 				# Attach a hint with the coordinates encoded expectation
 				# We will handle the next callback with a global variable is not safe; instead, send hidden state via separate mapping isn't present
@@ -143,7 +148,7 @@ async def handle_text_reply(message: Message) -> None:
 
 	# Handle nearby back reply button
 	nearby_id = resolve_nearby_reply_id(text)
-	if nearby_id == "nearby:back":
+	if nearby_id == "nearby:back" or nearby_id == "search:back":
 		from src.core.database import get_session
 		from src.databases.users import User
 		from sqlalchemy import select
@@ -153,8 +158,8 @@ async def handle_text_reply(message: Message) -> None:
 			user: User | None = await session.scalar(select(User).where(User.user_id == user_id))
 			if not user:
 				return
-			# Only allow from sending_location (ignore otherwise)
-			if user.step != "sending_location":
+			# Allow both sending_location and search_sending_location to go back
+			if user.step not in ("sending_location", "search_sending_location"):
 				return
 			user.step = "start"
 			await session.commit()
