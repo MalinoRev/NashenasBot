@@ -97,6 +97,73 @@ class ProfileMiddleware(BaseMiddleware):
 				select(UserProfile).where(UserProfile.user_id == user.id)
 			)
 
+			# Direct message flow intercept: if user.step like direct_to_{targetId}, handle back or forward and charge 1 coin
+			if getattr(user, "step", "").startswith("direct_to_"):
+				# Parse target id
+				try:
+					target_id_str = user.step.split("direct_to_", 1)[1]
+					target_internal_id = int(target_id_str)
+				except Exception:
+					target_internal_id = None
+				if target_internal_id is not None:
+					# If user pressed back, cancel and show /start
+					from src.context.keyboards.reply.special_contact import resolve_id_from_text as _resolve_special_back
+					if _resolve_special_back(text) == "special:back":
+						user.step = "start"
+						await session.commit()
+						name_display = None
+						if isinstance(event, Message) and event.from_user:
+							name_display = event.from_user.first_name or event.from_user.username
+						start_text = get_start_message(name_display)
+						kb0, _ = build_main_kb()
+						await event.answer(
+							start_text,
+							reply_markup=kb0,
+							parse_mode="Markdown",
+							link_preview_options=LinkPreviewOptions(is_disabled=True),
+						)
+						return None
+					# Check credit
+					if int(user.credit or 0) <= 0:
+						kb_main, _ = build_main_kb()
+						await event.answer("❌ موجودی سکه شما کافی نیست. از بخش سکه خرید کنید.", reply_markup=kb_main)
+						user.step = "start"
+						await session.commit()
+						return None
+					# Resolve target telegram id
+					from src.databases.users import User as _U2
+					target_user: _U2 | None = await session.scalar(select(_U2).where(_U2.id == target_internal_id))
+					if target_user and target_user.user_id:
+						# Send a header with sender profile link, then forward/copy the content
+						from src.context.messages.direct.received_header import format_message as _fmt_header
+						# Resolve sender unique_id
+						from src.databases.users import User as _USender
+						sender_row: _USender | None = await session.scalar(select(_USender).where(_USender.id == user.id))
+						sender_uid = sender_row.unique_id if sender_row and sender_row.unique_id else str(user.id)
+						try:
+							await event.bot.send_message(chat_id=int(target_user.user_id), text=_fmt_header(sender_uid))
+							await event.bot.copy_message(chat_id=int(target_user.user_id), from_chat_id=event.chat.id, message_id=event.message_id)
+						except Exception:
+							pass
+					# Deduct coin and reset step
+					user.credit = int(user.credit or 0) - 1
+					user.step = "start"
+					await session.commit()
+					# Acknowledge and show /start
+					name_display = None
+					if isinstance(event, Message) and event.from_user:
+						name_display = event.from_user.first_name or event.from_user.username
+					start_text = get_start_message(name_display)
+					kb, _ = build_main_kb()
+					await event.answer("✅ پیام شما ارسال شد.")
+					await event.answer(
+						start_text,
+						reply_markup=kb,
+						parse_mode="Markdown",
+						link_preview_options=LinkPreviewOptions(is_disabled=True),
+					)
+					return None
+
 			# If a command is sent while profile is not complete, block it
 			if text.startswith("/"):
 				incomplete = (

@@ -98,6 +98,10 @@ async def handle_any_callback(callback: CallbackQuery) -> None:
 		from src.handlers.callbacks.nearby_gender_100 import handle_nearby_gender_100_callback
 		await handle_nearby_gender_100_callback(callback)
 		return
+	if data.startswith("profile_direct:") or data.startswith("direct_confirm:"):
+		from src.handlers.callbacks.visitor_profile_direct import handle_visitor_profile_direct
+		await handle_visitor_profile_direct(callback)
+		return
 	if data == "nearby:request_location":
 		from src.handlers.callbacks.nearby_request_location import handle_nearby_request_location
 		await handle_nearby_request_location(callback)
@@ -466,6 +470,10 @@ async def handle_any_callback(callback: CallbackQuery) -> None:
 
 		await callback.message.answer(text, parse_mode="HTML", reply_markup=kb)
 		await callback.answer()
+		return
+	if data.startswith("profile_direct:") or data.startswith("direct_confirm:"):
+		from src.handlers.callbacks.visitor_profile_direct import handle_visitor_profile_direct
+		await handle_visitor_profile_direct(callback)
 		return
 	if data.startswith("profile_like:") or data.startswith("profile_block_toggle:") or data.startswith("profile_contact_toggle:"):
 		from src.handlers.callbacks.visitor_profile_actions import handle_visitor_profile_action
