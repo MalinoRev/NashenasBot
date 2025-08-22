@@ -93,6 +93,7 @@ async def generate_location_list(tg_user_id: int, latitude: float, longitude: fl
 				f"👤 پروفایل: /user_{html.escape(str(unique_id))}"
 			)
 			lines.append(f"<blockquote>{block_inner}</blockquote>")
+			lines.append("〰️" * 11)
 
 		if len(lines) <= 2:
 			lines.append("نتیجه‌ای مطابق فیلتر پیدا نشد.")
