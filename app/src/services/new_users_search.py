@@ -26,6 +26,16 @@ async def generate_new_users_list(tg_user_id: int, gender: GenderFilter, page: i
 		)
 		rows: list[tuple[User, UserProfile | None]] = [tuple(row) for row in result.all()]
 
+		def profile_complete(profile: UserProfile | None) -> bool:
+			return (
+				profile is not None
+				and profile.name is not None
+				and profile.is_female is not None
+				and profile.age is not None
+				and profile.state is not None
+				and profile.city is not None
+			)
+
 		def gender_ok(profile: UserProfile | None) -> bool:
 			if gender == "all":
 				return True
@@ -33,7 +43,7 @@ async def generate_new_users_list(tg_user_id: int, gender: GenderFilter, page: i
 				return False
 			return (not profile.is_female) if gender == "boys" else profile.is_female
 
-		filtered = [(u, p) for u, p in rows if gender_ok(p)]
+		filtered = [(u, p) for u, p in rows if profile_complete(p) and gender_ok(p)]
 		# Sort by created_at desc and limit 10
 		filtered.sort(key=lambda t: t[0].created_at, reverse=True)
 		offset = max(0, (int(page) - 1) * int(page_size))

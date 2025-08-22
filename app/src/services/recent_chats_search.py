@@ -45,6 +45,16 @@ async def generate_recent_chats_list(tg_user_id: int, gender: GenderFilter, page
 		)
 		rows: list[tuple[User, UserProfile | None]] = [tuple(row) for row in result.all()]
 
+		def profile_complete(profile: UserProfile | None) -> bool:
+			return (
+				profile is not None
+				and profile.name is not None
+				and profile.is_female is not None
+				and profile.age is not None
+				and profile.state is not None
+				and profile.city is not None
+			)
+
 		def gender_ok(profile: UserProfile | None) -> bool:
 			if gender == "all":
 				return True
@@ -52,7 +62,7 @@ async def generate_recent_chats_list(tg_user_id: int, gender: GenderFilter, page
 				return False
 			return (not profile.is_female) if gender == "boys" else profile.is_female
 
-		filtered = [(u, p) for u, p in rows if gender_ok(p)]
+		filtered = [(u, p) for u, p in rows if profile_complete(p) and gender_ok(p)]
 		# Keep original recent ordering by chat created_at; partner_ids carry recent order
 		order_map = {pid: idx for idx, pid in enumerate(partner_ids)}
 		filtered.sort(key=lambda t: order_map.get(t[0].id, 10**9))

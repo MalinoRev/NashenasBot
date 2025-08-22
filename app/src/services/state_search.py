@@ -34,6 +34,16 @@ async def generate_state_list(tg_user_id: int, gender: GenderFilter, page: int =
 		)
 		rows: list[tuple[User, UserProfile | None]] = [tuple(row) for row in result.all()]
 
+		def profile_complete(profile: UserProfile | None) -> bool:
+			return (
+				profile is not None
+				and profile.name is not None
+				and profile.is_female is not None
+				and profile.age is not None
+				and profile.state is not None
+				and profile.city is not None
+			)
+
 		def gender_ok(profile: UserProfile | None) -> bool:
 			if gender == "all":
 				return True
@@ -44,7 +54,9 @@ async def generate_state_list(tg_user_id: int, gender: GenderFilter, page: int =
 		# Filter by same state and gender
 		filtered: list[tuple[User, UserProfile | None]] = []
 		for u, p in rows:
-			if p is None or p.state is None:
+			if not profile_complete(p):
+				continue
+			if p.state is None:
 				continue
 			if p.state != my_profile.state:
 				continue

@@ -40,6 +40,16 @@ async def generate_location_list(tg_user_id: int, latitude: float, longitude: fl
 		)
 		rows: list[tuple[User, UserProfile | None, UserLocation | None]] = [tuple(row) for row in result.all()]
 
+		def profile_complete(profile: UserProfile | None) -> bool:
+			return (
+				profile is not None
+				and profile.name is not None
+				and profile.is_female is not None
+				and profile.age is not None
+				and profile.state is not None
+				and profile.city is not None
+			)
+
 		def gender_ok(profile: UserProfile | None) -> bool:
 			if gender == "all":
 				return True
@@ -49,6 +59,8 @@ async def generate_location_list(tg_user_id: int, latitude: float, longitude: fl
 
 		filtered: list[tuple[User, UserProfile | None, float]] = []
 		for u, p, l in rows:
+			if not profile_complete(p):
+				continue
 			if not gender_ok(p):
 				continue
 			if l is None or l.location_x is None or l.location_y is None:

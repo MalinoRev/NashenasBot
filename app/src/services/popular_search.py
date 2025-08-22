@@ -36,6 +36,16 @@ async def generate_popular_list(tg_user_id: int, gender: GenderFilter, page: int
 		else:
 			likes_counts = {}
 
+		def profile_complete(profile: UserProfile | None) -> bool:
+			return (
+				profile is not None
+				and profile.name is not None
+				and profile.is_female is not None
+				and profile.age is not None
+				and profile.state is not None
+				and profile.city is not None
+			)
+
 		def gender_ok(profile: UserProfile | None) -> bool:
 			if gender == "all":
 				return True
@@ -43,7 +53,7 @@ async def generate_popular_list(tg_user_id: int, gender: GenderFilter, page: int
 				return False
 			return (not profile.is_female) if gender == "boys" else profile.is_female
 
-		filtered = [(u, p) for u, p in rows if gender_ok(p)]
+		filtered = [(u, p) for u, p in rows if profile_complete(p) and gender_ok(p)]
 		# Sort by like count desc then last_activity desc
 		filtered.sort(key=lambda t: (-(likes_counts.get(t[0].id, 0)), t[0].last_activity), reverse=False)
 		offset = max(0, (int(page) - 1) * int(page_size))

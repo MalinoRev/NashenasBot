@@ -36,6 +36,16 @@ async def generate_same_age_list(tg_user_id: int, gender: GenderFilter, page: in
 		)
 		rows: list[tuple[User, UserProfile | None]] = [tuple(row) for row in result.all()]
 
+		def profile_complete(profile: UserProfile | None) -> bool:
+			return (
+				profile is not None
+				and profile.name is not None
+				and profile.is_female is not None
+				and profile.age is not None
+				and profile.state is not None
+				and profile.city is not None
+			)
+
 		def gender_ok(profile: UserProfile | None) -> bool:
 			if gender == "all":
 				return True
@@ -45,7 +55,9 @@ async def generate_same_age_list(tg_user_id: int, gender: GenderFilter, page: in
 
 		filtered: list[tuple[User, UserProfile | None]] = []
 		for u, p in rows:
-			if p is None or p.age is None:
+			if not profile_complete(p):
+				continue
+			if p.age is None:
 				continue
 			if not (min_age <= int(p.age) <= max_age):
 				continue
