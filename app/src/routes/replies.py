@@ -4,7 +4,7 @@ from aiogram.types import Message, FSInputFile, LinkPreviewOptions
 from src.context.keyboards.reply.mainButtons import resolve_id_from_text as resolve_main_id
 from src.context.keyboards.reply.random_match import resolve_id_from_text as resolve_random_match_reply_id
 from src.context.keyboards.reply.nearby import resolve_id_from_text as resolve_nearby_reply_id
-from src.context.keyboards.reply.mainButtons import build_keyboard as build_main_kb
+from src.context.keyboards.reply.mainButtons import build_keyboard as build_main_kb, build_keyboard_for
 from src.context.messages.commands.start import get_message as get_start_message
 
 
@@ -52,7 +52,7 @@ async def handle_text_reply(message: Message) -> None:
 			await message.answer(get_photo_saved())
 			name = (message.from_user.first_name if message.from_user else None) or (message.from_user.username if message.from_user else None)
 			start_text = get_start_message(name)
-			kb, _ = build_main_kb()
+			kb, _ = await build_keyboard_for(message.from_user.id if message.from_user else None)
 			await message.answer(start_text, reply_markup=kb, parse_mode="Markdown", link_preview_options=LinkPreviewOptions(is_disabled=True))
 			return
 
@@ -87,7 +87,7 @@ async def handle_text_reply(message: Message) -> None:
 				# Also send /start exactly as elsewhere
 				name = (message.from_user.first_name if message.from_user else None) or (message.from_user.username if message.from_user else None)
 				start_text = get_start_message(name)
-				kb, _ = build_main_kb()
+				kb, _ = await build_keyboard_for(message.from_user.id if message.from_user else None)
 				await message.answer(
 					start_text,
 					reply_markup=kb,
@@ -105,7 +105,7 @@ async def handle_text_reply(message: Message) -> None:
 				# First, send a tiny message to restore main keyboard
 				name = (message.from_user.first_name if message.from_user else None) or (message.from_user.username if message.from_user else None)
 				start_text = get_start_message(name)
-				kb_main, _ = build_main_kb()
+				kb_main, _ = await build_keyboard_for(message.from_user.id if message.from_user else None)
 				await message.answer("در حال پردازش...", reply_markup=kb_main)
 				# Then show gender keyboard
 				await message.answer(get_gender_message(), reply_markup=build_gender_kb())
@@ -137,7 +137,7 @@ async def handle_text_reply(message: Message) -> None:
 		# Send the same start message + main keyboard as /start
 		name = (message.from_user.first_name if message.from_user else None) or (message.from_user.username if message.from_user else None)
 		start_text = get_start_message(name)
-		kb, _ = build_main_kb()
+		kb, _ = await build_keyboard_for(message.from_user.id if message.from_user else None)
 		await message.answer(
 			start_text,
 			reply_markup=kb,
@@ -168,7 +168,7 @@ async def handle_text_reply(message: Message) -> None:
 		# Send the same start message + main keyboard as /start
 		name = (message.from_user.first_name if message.from_user else None) or (message.from_user.username if message.from_user else None)
 		start_text = get_start_message(name)
-		kb, _ = build_main_kb()
+		kb, _ = await build_keyboard_for(message.from_user.id if message.from_user else None)
 		await message.answer(
 			start_text,
 			reply_markup=kb,

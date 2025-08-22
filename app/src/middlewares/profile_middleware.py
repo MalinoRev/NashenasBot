@@ -26,7 +26,6 @@ from src.context.messages.profileMiddleware.invalidAgeRange import get_message a
 from src.context.messages.profileMiddleware.chooseState import get_message as get_choose_state_message
 from src.context.messages.profileMiddleware.invalidState import get_message as get_invalid_state_message
 from src.context.messages.profileMiddleware.chooseCity import get_message as get_choose_city_message
-from src.context.messages.profileMiddleware.invalidCity import get_message as get_invalid_city_message
 from src.context.messages.profileMiddleware.profileCompleted import get_message as get_profile_completed_message
 from src.context.messages.profileMiddleware.invalidCommand import get_message as get_invalid_command_message
 from src.context.messages.profileMiddleware.nameUpdated import get_message as get_name_updated_message
@@ -37,7 +36,7 @@ from src.context.keyboards.reply.gender import build_keyboard as build_gender_kb
 from src.context.keyboards.reply.age import build_keyboard as build_age_kb, resolve_id_from_text as resolve_age_id
 from src.context.keyboards.reply.state import build_keyboard as build_state_kb, resolve_id_from_text as resolve_state_id
 from src.context.keyboards.reply.city import build_keyboard as build_city_kb, resolve_id_from_text as resolve_city_id
-from src.context.keyboards.reply.mainButtons import build_keyboard as build_main_kb
+from src.context.keyboards.reply.mainButtons import build_keyboard as build_main_kb, build_keyboard_for
 from src.context.messages.commands.start import get_message as get_start_message
 from src.databases.users import User
 from src.databases.states import State
@@ -115,7 +114,7 @@ class ProfileMiddleware(BaseMiddleware):
 						if isinstance(event, Message) and event.from_user:
 							name_display = event.from_user.first_name or event.from_user.username
 						start_text = get_start_message(name_display)
-						kb0, _ = build_main_kb()
+						kb0, _ = await build_keyboard_for(event.from_user.id if event.from_user else None)
 						await event.answer(
 							start_text,
 							reply_markup=kb0,
@@ -125,7 +124,7 @@ class ProfileMiddleware(BaseMiddleware):
 						return None
 					# Check credit
 					if int(user.credit or 0) <= 0:
-						kb_main, _ = build_main_kb()
+						kb_main, _ = await build_keyboard_for(event.from_user.id if event.from_user else None)
 						await event.answer("❌ موجودی سکه شما کافی نیست. از بخش سکه خرید کنید.", reply_markup=kb_main)
 						user.step = "start"
 						await session.commit()
@@ -154,7 +153,7 @@ class ProfileMiddleware(BaseMiddleware):
 					if isinstance(event, Message) and event.from_user:
 						name_display = event.from_user.first_name or event.from_user.username
 					start_text = get_start_message(name_display)
-					kb, _ = build_main_kb()
+					kb, _ = await build_keyboard_for(event.from_user.id if event.from_user else None)
 					await event.answer("✅ پیام شما ارسال شد.")
 					await event.answer(
 						start_text,
@@ -246,7 +245,7 @@ class ProfileMiddleware(BaseMiddleware):
 				if isinstance(event, Message) and event.from_user:
 					name_display = event.from_user.first_name or event.from_user.username
 				start_text = get_start_message(name_display)
-				kb, _ = build_main_kb()
+				kb, _ = await build_keyboard_for(event.from_user.id if event.from_user else None)
 				await event.answer(
 					start_text,
 					reply_markup=kb,
@@ -307,7 +306,7 @@ class ProfileMiddleware(BaseMiddleware):
 					if isinstance(event, Message) and event.from_user:
 						name_display = event.from_user.first_name or event.from_user.username
 					start_text = get_start_message(name_display)
-					kb, _ = build_main_kb()
+					kb, _ = await build_keyboard_for(event.from_user.id if event.from_user else None)
 					await event.answer(
 						start_text,
 						reply_markup=kb,
@@ -357,7 +356,7 @@ class ProfileMiddleware(BaseMiddleware):
 							if isinstance(event, Message) and event.from_user:
 								name_display = event.from_user.first_name or event.from_user.username
 							start_text = get_start_message(name_display)
-							kb, _ = build_main_kb()
+							kb, _ = await build_keyboard_for(event.from_user.id if event.from_user else None)
 							await event.answer(
 								start_text,
 								reply_markup=kb,
@@ -401,7 +400,7 @@ class ProfileMiddleware(BaseMiddleware):
 					if isinstance(event, Message) and event.from_user:
 						name_display = event.from_user.first_name or event.from_user.username
 					start_text = get_start_message(name_display)
-					kb, _ = build_main_kb()
+					kb, _ = await build_keyboard_for(event.from_user.id if event.from_user else None)
 					await event.answer(
 						start_text,
 						reply_markup=kb,
@@ -473,7 +472,7 @@ class ProfileMiddleware(BaseMiddleware):
 						if isinstance(event, Message) and event.from_user:
 							name_display = event.from_user.first_name or event.from_user.username
 						start_text = get_start_message(name_display)
-						kb, _ = build_main_kb()
+						kb, _ = await build_keyboard_for(event.from_user.id if event.from_user else None)
 						await event.answer(
 							start_text,
 							reply_markup=kb,
@@ -532,7 +531,7 @@ class ProfileMiddleware(BaseMiddleware):
 					if isinstance(event, Message) and event.from_user:
 						name_display = event.from_user.first_name or event.from_user.username
 					start_text = get_start_message(name_display)
-					kb, _ = build_main_kb()
+					kb, _ = await build_keyboard_for(event.from_user.id if event.from_user else None)
 					await event.answer(
 						start_text,
 						reply_markup=kb,
@@ -542,7 +541,7 @@ class ProfileMiddleware(BaseMiddleware):
 					data["profile_ok"] = False
 					return None
 				# Normal flow completion
-				main_kb, _ = build_main_kb()
+				main_kb, _ = await build_keyboard_for(event.from_user.id if event.from_user else None)
 				await event.answer(get_profile_completed_message(), reply_markup=main_kb)
 				data["profile_ok"] = False
 				return None

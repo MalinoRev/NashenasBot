@@ -10,13 +10,13 @@ router = Router(name="commands")
 async def start_command(message: Message) -> None:
 	# Use contextualized message and keyboard, without touching their files
 	from src.context.messages.commands.start import get_message as get_start_message
-	from src.context.keyboards.reply.mainButtons import build_keyboard as build_main_kb
+	from src.context.keyboards.reply.mainButtons import build_keyboard as build_main_kb, build_keyboard_for
 
 	name = None
 	if message.from_user:
 		name = message.from_user.first_name or message.from_user.username or None
 	text = get_start_message(name)
-	kb, _ = build_main_kb()
+	kb, _ = await build_keyboard_for(message.from_user.id if message.from_user else None)
 	await message.answer(
 		text,
 		reply_markup=kb,

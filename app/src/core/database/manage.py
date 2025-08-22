@@ -24,6 +24,7 @@ import src.databases.user_blocked  # noqa: F401
 import src.databases.payments  # noqa: F401
 import src.databases.chats  # noqa: F401
 import src.databases.user_vips  # noqa: F401
+import src.databases.admins  # noqa: F401
 
 
 Action = Literal["create", "drop", "recreate"]

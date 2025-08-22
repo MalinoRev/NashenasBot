@@ -9,7 +9,7 @@ from src.databases.users import User
 from src.databases.user_profiles import UserProfile
 from src.databases.likes import Like
 from src.databases.user_locations import UserLocation
-from src.context.keyboards.reply.mainButtons import build_keyboard as build_main_kb
+from src.context.keyboards.reply.mainButtons import build_keyboard as build_main_kb, build_keyboard_for
 from src.context.messages.visitor.profile_view import get_not_found_message, format_caption
 from src.context.keyboards.inline.visitor_profile import build_keyboard as build_visitor_kb
 
@@ -32,7 +32,7 @@ class VisitorMiddleware(BaseMiddleware):
 		async with get_session() as session:
 			target: User | None = await session.scalar(select(User).where(User.unique_id == unique_id))
 			if target is None:
-				kb, _ = build_main_kb()
+				kb, _ = await build_keyboard_for(event.from_user.id if event.from_user else None)
 				await event.answer(get_not_found_message(), reply_markup=kb)
 				return None
 			profile: UserProfile | None = await session.scalar(select(UserProfile).where(UserProfile.user_id == target.id))
