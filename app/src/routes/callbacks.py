@@ -343,8 +343,128 @@ async def handle_any_callback(callback: CallbackQuery) -> None:
 			await callback.answer()
 			return
 		lat, lon = coords
-		text, ok = await generate_location_list(user_id, lat, lon, 100, gender)
-		await callback.message.answer(text)
+		text, ok, has_next, has_items = await generate_location_list(user_id, lat, lon, 100, gender, page=1)
+		from src.context.keyboards.inline.search_pagination import build_keyboard as build_pagination_kb
+		kb = build_pagination_kb("by_location", page=1, gender=gender, has_next=has_next)
+		await callback.message.answer(text, parse_mode="HTML", reply_markup=kb)
+		await callback.answer()
+		return
+	if data.startswith("search_page:"):
+		# Unified pagination handler
+		# Patterns:
+		# search_page:same_province:gender:page
+		# search_page:same_age:gender:page
+		# search_page:new_users:gender:page
+		# search_page:no_chats:gender:page
+		# search_page:popular:gender:page
+		# search_page:recent_chats:gender:page
+		# search_page:nearby:max_km:gender:page
+		# search_page:by_location:gender:page  (uses temp location)
+		parts = data.split(":")
+		if len(parts) < 4:
+			await callback.answer()
+			return
+		_, kind, *rest = parts
+		page = 1
+		gender = "all"
+		max_km = None
+		if kind == "nearby":
+			# rest: [max_km, gender, page]
+			if len(rest) >= 3:
+				max_km = int(rest[0])
+				gender = rest[1]
+				page = int(rest[2])
+		elif kind in {"same_province", "same_age", "new_users", "no_chats", "popular", "recent_chats", "by_location"}:
+			# rest: [gender, page]
+			if len(rest) >= 2:
+				gender = rest[0]
+				page = int(rest[1])
+		else:
+			await callback.answer()
+			return
+
+		from sqlalchemy import select
+		from src.core.database import get_session
+		from src.databases.users import User
+		async with get_session() as session:
+			user = await session.scalar(select(User).where(User.user_id == (callback.from_user.id if callback.from_user else 0)))
+			if not user:
+				await callback.answer()
+				return
+
+		from src.context.keyboards.inline.search_pagination import build_keyboard as build_pagination_kb
+		kb = None
+		text = ""
+		at_first_page = page <= 1
+		at_last_page = False
+		has_items = True
+		if kind == "same_province":
+			from src.services.state_search import generate_state_list
+			text, ok, has_next, has_items = await generate_state_list(callback.from_user.id if callback.from_user else 0, gender, page=page)
+			at_last_page = not has_next
+			kb = build_pagination_kb("same_province", page=page, gender=gender, has_next=has_next)
+		elif kind == "same_age":
+			from src.services.age_search import generate_same_age_list
+			text, ok, has_next, has_items = await generate_same_age_list(callback.from_user.id if callback.from_user else 0, gender, page=page)
+			at_last_page = not has_next
+			kb = build_pagination_kb("same_age", page=page, gender=gender, has_next=has_next)
+		elif kind == "new_users":
+			from src.services.new_users_search import generate_new_users_list
+			text, ok, has_next, has_items = await generate_new_users_list(callback.from_user.id if callback.from_user else 0, gender, page=page)
+			at_last_page = not has_next
+			kb = build_pagination_kb("new_users", page=page, gender=gender, has_next=has_next)
+		elif kind == "no_chats":
+			from src.services.no_chats_search import generate_no_chats_list
+			text, ok, has_next, has_items = await generate_no_chats_list(callback.from_user.id if callback.from_user else 0, gender, page=page)
+			at_last_page = not has_next
+			kb = build_pagination_kb("no_chats", page=page, gender=gender, has_next=has_next)
+		elif kind == "popular":
+			from src.services.popular_search import generate_popular_list
+			text, ok, has_next, has_items = await generate_popular_list(callback.from_user.id if callback.from_user else 0, gender, page=page)
+			at_last_page = not has_next
+			kb = build_pagination_kb("popular", page=page, gender=gender, has_next=has_next)
+		elif kind == "recent_chats":
+			from src.services.recent_chats_search import generate_recent_chats_list
+			text, ok, has_next, has_items = await generate_recent_chats_list(callback.from_user.id if callback.from_user else 0, gender, page=page)
+			at_last_page = not has_next
+			kb = build_pagination_kb("recent_chats", page=page, gender=gender, has_next=has_next)
+		elif kind == "nearby":
+			from src.services.nearby_search import generate_nearby_list
+			text, ok, has_next, has_items = await generate_nearby_list(callback.from_user.id if callback.from_user else 0, int(max_km or 5), gender, page=page)
+			at_last_page = not has_next
+			kb = build_pagination_kb("nearby", page=page, gender=gender, has_next=has_next, max_km=int(max_km or 5))
+		elif kind == "by_location":
+			from src.services.temp_location_cache import get_temp_location
+			coords = get_temp_location(user.id)
+			if not coords:
+				await callback.message.answer("⚠️ ابتدا موقعیت مکانی خود را ارسال کنید.")
+				await callback.answer()
+				return
+			from src.services.location_search import generate_location_list
+			lat, lon = coords
+			text, ok, has_next, has_items = await generate_location_list(callback.from_user.id if callback.from_user else 0, lat, lon, 100, gender, page=page)
+			at_last_page = not has_next
+			kb = build_pagination_kb("by_location", page=page, gender=gender, has_next=has_next)
+		else:
+			await callback.answer()
+			return
+
+		# Bound alerts
+		# Bounds checks BEFORE deleting current message
+		if page <= 1 and at_first_page:
+			await callback.answer("شما صفحه اول هستید.", show_alert=True)
+			return
+		if not has_items and at_last_page:
+			await callback.answer("شما صفحه آخر هستید.", show_alert=True)
+			return
+
+		# Now safe to delete previous message and show new page
+		try:
+			await callback.message.delete()
+		except Exception:
+			pass
+
+		await callback.message.answer(text, parse_mode="HTML", reply_markup=kb)
 		await callback.answer()
 		return
 	if data.startswith("profile_like:") or data.startswith("profile_block_toggle:") or data.startswith("profile_contact_toggle:"):

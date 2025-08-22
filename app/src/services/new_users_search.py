@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import Literal
+import html
 
 from sqlalchemy import select, func
 
@@ -12,11 +13,11 @@ from src.databases.likes import Like
 GenderFilter = Literal["boys", "girls", "all"]
 
 
-async def generate_new_users_list(tg_user_id: int, gender: GenderFilter) -> tuple[str, bool]:
+async def generate_new_users_list(tg_user_id: int, gender: GenderFilter, page: int = 1, page_size: int = 10) -> tuple[str, bool, bool, bool]:
 	async with get_session() as session:
 		me: User | None = await session.scalar(select(User).where(User.user_id == tg_user_id))
 		if not me:
-			return ("حساب کاربری پیدا نشد.", False)
+			return ("حساب کاربری پیدا نشد.", False, False, False)
 
 		result = await session.execute(
 			select(User, UserProfile)
@@ -35,10 +36,13 @@ async def generate_new_users_list(tg_user_id: int, gender: GenderFilter) -> tupl
 		filtered = [(u, p) for u, p in rows if gender_ok(p)]
 		# Sort by created_at desc and limit 10
 		filtered.sort(key=lambda t: t[0].created_at, reverse=True)
-		filtered = filtered[:10]
+		offset = max(0, (int(page) - 1) * int(page_size))
+		page_slice = filtered[offset:offset + int(page_size)]
+		has_next = len(filtered) > offset + len(page_slice)
+		page_has_items = len(page_slice) > 0
 
-		if filtered:
-			user_ids = [u.id for u, _ in filtered]
+		if page_slice:
+			user_ids = [u.id for u, _ in page_slice]
 			likes_result = await session.execute(
 				select(Like.target_id, func.count(Like.id)).where(Like.target_id.in_(user_ids)).group_by(Like.target_id)
 			)
@@ -47,7 +51,7 @@ async def generate_new_users_list(tg_user_id: int, gender: GenderFilter) -> tupl
 			likes_counts = {}
 
 		lines: list[str] = ["🆕 لیست کاربران جدید بر اساس زمان ایجاد حساب:", ""]
-		for u, p in filtered:
+		for u, p in page_slice:
 			name = (p.name if p and p.name else None) or (u.tg_name or "بدون نام")
 			age = p.age if p and p.age is not None else "?"
 			if p and p.is_female is True:
@@ -61,15 +65,17 @@ async def generate_new_users_list(tg_user_id: int, gender: GenderFilter) -> tupl
 				gender_word = "نامشخص"
 			likes = likes_counts.get(u.id, 0)
 			unique_id = u.unique_id or str(u.id)
-			lines.append(f"🔸 کاربر {name} | {emoji} {gender_word} | سن: {age} | {likes} ❤️")
-			lines.append(f"👤 پروفایل: /user_{unique_id}")
-			lines.append("〰️" * 11)
+			block_inner = (
+				f"🔸 کاربر {html.escape(str(name))} | {emoji} {gender_word} | سن: {html.escape(str(age))} | {html.escape(str(likes))} ❤️\n"
+				f"👤 پروفایل: /user_{html.escape(str(unique_id))}"
+			)
+			lines.append(f"<blockquote>{block_inner}</blockquote>")
 
 		if len(lines) <= 2:
 			lines.append("نتیجه‌ای مطابق فیلتر پیدا نشد.")
 
 		lines.append("")
 		lines.append(f"جستجو شده در {datetime.now().strftime('%Y-%m-%d %H:%M')}")
-		return ("\n".join(lines), True)
+		return ("\n".join(lines), True, has_next, page_has_items)
 
 
