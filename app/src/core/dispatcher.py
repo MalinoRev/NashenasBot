@@ -13,6 +13,7 @@ from src.middlewares.profile_completion_middleware import ProfileCompletionMiddl
 from src.middlewares.no_command_middleware import NoCommandMiddleware
 from src.middlewares.visitor_middleware import VisitorMiddleware
 from src.middlewares.chat_forward_middleware import ChatForwardMiddleware
+from src.middlewares.activity_middleware import ActivityMiddleware
 
 
 def build_dispatcher() -> Dispatcher:
@@ -26,6 +27,7 @@ def build_dispatcher() -> Dispatcher:
 	no_command = NoCommandMiddleware()
 	visitor = VisitorMiddleware()
 	chat_forward = ChatForwardMiddleware()
+	activity = ActivityMiddleware()
 	# Processing toast must run first
 	dp.message.middleware(processing)
 	dp.callback_query.middleware(processing)
@@ -37,6 +39,9 @@ def build_dispatcher() -> Dispatcher:
 	# Channel membership check MUST run after other middlewares
 	dp.message.middleware(channels_guard)
 	dp.callback_query.middleware(channels_guard)
+	# Track last activity for any event (after auth, before profile completion)
+	dp.message.middleware(activity)
+	dp.callback_query.middleware(activity)
 	# Block commands on restricted steps before hitting handlers
 	dp.message.middleware(no_command)
 	# Forward chat messages automatically when step == chatting
