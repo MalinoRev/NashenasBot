@@ -36,6 +36,10 @@ async def handle_any_callback(callback: CallbackQuery) -> None:
 		from src.handlers.callbacks.chat_request_decisions import handle_chat_request_reject
 		await handle_chat_request_reject(callback)
 		return
+	if data.startswith("chat_request_accept:"):
+		from src.handlers.callbacks.chat_request_decisions import handle_chat_request_accept
+		await handle_chat_request_accept(callback)
+		return
 	if data == "nearby_distance:5":
 		from src.context.messages.callbacks.nearby_distance_5 import get_message as get_msg
 		from src.context.keyboards.inline.nearby_gender_5 import build_keyboard as build_kb

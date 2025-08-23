@@ -3,6 +3,9 @@ from sqlalchemy import select
 
 from src.core.database import get_session
 from src.databases.users import User
+from src.databases.chats import Chat
+from src.context.messages.chat.connected import get_message as get_chat_connected
+from src.context.keyboards.reply.chat_actions import build_keyboard as build_chat_actions_kb
 
 
 async def handle_chat_request_reject(callback: CallbackQuery) -> None:
@@ -42,6 +45,48 @@ async def handle_chat_request_reject(callback: CallbackQuery) -> None:
 				)
 			except Exception:
 				pass
+	await callback.answer()
+	return
+
+
+async def handle_chat_request_accept(callback: CallbackQuery) -> None:
+	data = callback.data or ""
+	parts = data.split(":", 1)
+	if len(parts) < 2:
+		await callback.answer()
+		return
+	sender_unique_id = parts[1]
+	# Accept: set both steps to chatting, create chat row, notify both sides with chat UI
+	async with get_session() as session:
+		sender: User | None = await session.scalar(select(User).where(User.unique_id == sender_unique_id))
+		receiver_tg_id = callback.from_user.id if callback.from_user else 0
+		receiver: User | None = await session.scalar(select(User).where(User.user_id == receiver_tg_id))
+		if not sender or not receiver:
+			await callback.answer()
+			return
+		# Update steps
+		sender.step = "chatting"
+		receiver.step = "chatting"
+		# Create chat row
+		chat = Chat(user1_id=sender.id, user2_id=receiver.id)
+		session.add(chat)
+		await session.commit()
+	# Delete decision message
+	try:
+		await callback.message.delete()
+	except Exception:
+		pass
+	# Send connected message to both
+	try:
+		kb1, _ = build_chat_actions_kb()
+		await callback.bot.send_message(int(sender.user_id), get_chat_connected(), reply_markup=kb1)
+	except Exception:
+		pass
+	try:
+		kb2, _ = build_chat_actions_kb()
+		await callback.message.answer(get_chat_connected(), reply_markup=kb2)
+	except Exception:
+		pass
 	await callback.answer()
 	return
 
