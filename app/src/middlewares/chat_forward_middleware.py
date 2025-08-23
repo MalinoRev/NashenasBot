@@ -7,6 +7,7 @@ from sqlalchemy import select, or_
 from src.core.database import get_session
 from src.databases.users import User
 from src.databases.chats import Chat
+from src.databases.chat_history import ChatHistory
 from src.context.keyboards.reply.chat_actions import resolve_id_from_text
 from src.handlers.replies.chat_actions import handle_chat_action
 
@@ -49,7 +50,18 @@ class ChatForwardMiddleware(BaseMiddleware):
 				return await handler(event, data)
 			# Forward/copy user's message to partner
 			try:
-				await event.bot.copy_message(chat_id=int(partner.user_id), from_chat_id=event.chat.id, message_id=event.message_id)
+				sent = await event.bot.copy_message(chat_id=int(partner.user_id), from_chat_id=event.chat.id, message_id=event.message_id)
+				# Persist chat history
+				ch = ChatHistory(
+					user_id=me.id,
+					target_id=partner.id,
+					chat_id=chat.id,
+					received_message_id=event.message_id,
+					sent_message_id=getattr(sent, "message_id", 0),
+				)
+				async with get_session() as session2:
+					session2.add(ch)
+					await session2.commit()
 			except Exception:
 				pass
 			return None

@@ -15,7 +15,9 @@ class ChatHistory(Base):
 	id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
 	user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), nullable=False)
 	target_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), nullable=False)
-	message_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+	chat_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("chats.id"), nullable=False)
+	received_message_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+	sent_message_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
 	created_at: Mapped[DateTime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
 
 
