@@ -14,7 +14,7 @@ from src.context.messages.no_command.blocked import get_message as get_blocked_m
 ALLOWED_COMMANDS_BY_STEP: dict[str, set[str]] = {
 	# While searching or sending location, require using on-screen buttons
 	"searching": {"/on", "/off", "/credit", "/link", "/instagram"},
-	"chatting": set(),
+	"chatting": {"/help_deleteMessage"},
 	"sending_location": set(),
 }
 

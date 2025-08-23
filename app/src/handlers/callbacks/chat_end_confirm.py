@@ -1,5 +1,6 @@
 from aiogram.types import CallbackQuery
 from sqlalchemy import select, or_
+from datetime import datetime
 
 from src.core.database import get_session
 from src.databases.users import User
@@ -41,6 +42,8 @@ async def handle_chat_end_yes(callback: CallbackQuery) -> None:
 		# Set steps back to start
 		u1.step = "start"
 		u2.step = "start"
+		# Stamp chat end time
+		chat.ended_at = datetime.utcnow()
 		await session.commit()
 	# Delete confirm message
 	try:

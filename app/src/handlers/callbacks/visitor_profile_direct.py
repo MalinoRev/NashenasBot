@@ -8,6 +8,7 @@ from src.context.messages.callbacks.direct_intro import get_message as get_direc
 from src.context.messages.callbacks.direct_prompt import get_message as get_direct_prompt
 from src.context.keyboards.inline.direct_confirm import build_keyboard as build_direct_confirm_kb
 from src.context.keyboards.reply.special_contact import build_back_keyboard as build_back_kb
+from src.context.alerts.direct_not_allowed import get_message as get_direct_not_allowed
 
 
 async def handle_visitor_profile_direct(callback: CallbackQuery) -> None:
@@ -27,6 +28,13 @@ async def handle_visitor_profile_direct(callback: CallbackQuery) -> None:
 
 	if data.startswith("profile_direct:"):
 		# Show intro with cost and confirm button
+		# Check viewer step must be start
+		viewer_id = callback.from_user.id if callback.from_user else 0
+		async with get_session() as session2:
+			viewer: User | None = await session2.scalar(select(User).where(User.user_id == viewer_id))
+			if not viewer or getattr(viewer, "step", "start") != "start":
+				await callback.answer(get_direct_not_allowed(), show_alert=True)
+				return
 		try:
 			await callback.message.delete()
 		except Exception:

@@ -20,6 +20,8 @@ class ProcessingToastMiddleware(BaseMiddleware):
 			# Skip toast for certain callbacks that need to show their own alerts
 			skip_prefixes = (
 				"search_page:",
+				"profile_direct:",
+				"direct_confirm:",
 				"profile_chat_request:",
 				"chat_request_accept:",
 				"chat_request_reject:",
