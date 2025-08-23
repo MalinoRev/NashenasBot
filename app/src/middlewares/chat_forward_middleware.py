@@ -32,6 +32,45 @@ class ChatForwardMiddleware(BaseMiddleware):
 		if action is not None:
 			await handle_chat_action(event)
 			return None
+		# Intercept delete commands on replied messages
+		if (event.reply_to_message is not None) and (event.text or "").strip().lower() in {"del", "delete", "حذف"}:
+			async with get_session() as session0:
+				me0: User | None = await session0.scalar(select(User).where(User.user_id == user_tg_id))
+				if not me0:
+					return None
+				# Find latest chat
+				chat0: Chat | None = await session0.scalar(
+					select(Chat).where(or_(Chat.user1_id == me0.id, Chat.user2_id == me0.id)).order_by(Chat.id.desc())
+				)
+				if not chat0:
+					return None
+				# Lookup chat history by my message id
+				replied_id = event.reply_to_message.message_id
+				rec: ChatHistory | None = await session0.scalar(
+					select(ChatHistory).where(
+						ChatHistory.chat_id == chat0.id,
+						ChatHistory.received_message_id == replied_id,
+					)
+				)
+				if not rec:
+					# Not my message; notify
+					from src.context.messages.chat.delete_not_allowed import get_message as get_del_not_allowed
+					await event.answer(get_del_not_allowed())
+					return None
+				# It is my message: delete my message and the bot-sent copy for partner
+				try:
+					await event.bot.delete_message(chat_id=event.chat.id, message_id=replied_id)
+				except Exception:
+					pass
+				# Delete partner's copy
+				partner_id0 = chat0.user2_id if chat0.user1_id == me0.id else chat0.user1_id
+				partner0: User | None = await session0.scalar(select(User).where(User.id == partner_id0))
+				if partner0 and partner0.user_id:
+					try:
+						await event.bot.delete_message(chat_id=int(partner0.user_id), message_id=int(rec.sent_message_id))
+					except Exception:
+						pass
+				return None
 		async with get_session() as session:
 			me: User | None = await session.scalar(select(User).where(User.user_id == user_tg_id))
 			if not me or getattr(me, "step", "start") != "chatting":
@@ -50,7 +89,12 @@ class ChatForwardMiddleware(BaseMiddleware):
 				return await handler(event, data)
 			# Forward/copy user's message to partner
 			try:
-				sent = await event.bot.copy_message(chat_id=int(partner.user_id), from_chat_id=event.chat.id, message_id=event.message_id)
+				sent = await event.bot.copy_message(
+					chat_id=int(partner.user_id),
+					from_chat_id=event.chat.id,
+					message_id=event.message_id,
+					protect_content=bool(chat.secure_chat),
+				)
 				# Persist chat history
 				ch = ChatHistory(
 					user_id=me.id,
