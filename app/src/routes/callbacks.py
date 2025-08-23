@@ -484,6 +484,14 @@ async def handle_any_callback(callback: CallbackQuery) -> None:
 		await callback.message.answer(text, parse_mode="HTML", reply_markup=kb)
 		await callback.answer()
 		return
+	if data.startswith("chat_end_no:"):
+		from src.handlers.callbacks.chat_end_confirm import handle_chat_end_no
+		await handle_chat_end_no(callback)
+		return
+	if data.startswith("chat_end_yes:"):
+		from src.handlers.callbacks.chat_end_confirm import handle_chat_end_yes
+		await handle_chat_end_yes(callback)
+		return
 	if data.startswith("profile_direct:") or data.startswith("direct_confirm:"):
 		from src.handlers.callbacks.visitor_profile_direct import handle_visitor_profile_direct
 		await handle_visitor_profile_direct(callback)

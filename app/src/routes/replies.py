@@ -4,6 +4,7 @@ from aiogram.types import Message, FSInputFile, LinkPreviewOptions
 from src.context.keyboards.reply.mainButtons import resolve_id_from_text as resolve_main_id
 from src.context.keyboards.reply.random_match import resolve_id_from_text as resolve_random_match_reply_id
 from src.context.keyboards.reply.nearby import resolve_id_from_text as resolve_nearby_reply_id
+from src.handlers.replies.chat_actions import handle_chat_action
 from src.context.keyboards.reply.mainButtons import build_keyboard as build_main_kb, build_keyboard_for
 from src.context.messages.commands.start import get_message as get_start_message
 
@@ -19,6 +20,8 @@ async def handle_text_reply(message: Message) -> None:
 		return
 
 	text = message.text or ""
+	# Intercept chat actions (reply buttons in chat)
+	await handle_chat_action(message)
 
 	# Handle edit photo flow: accept only photo
 	from src.core.database import get_session

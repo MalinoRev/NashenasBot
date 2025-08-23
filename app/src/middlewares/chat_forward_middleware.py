@@ -7,6 +7,8 @@ from sqlalchemy import select, or_
 from src.core.database import get_session
 from src.databases.users import User
 from src.databases.chats import Chat
+from src.context.keyboards.reply.chat_actions import resolve_id_from_text
+from src.handlers.replies.chat_actions import handle_chat_action
 
 
 class ChatForwardMiddleware(BaseMiddleware):
@@ -24,6 +26,11 @@ class ChatForwardMiddleware(BaseMiddleware):
 		user_tg_id: Optional[int] = event.from_user.id if event.from_user else None
 		if not user_tg_id:
 			return await handler(event, data)
+		# Intercept chat action buttons so they act locally and do not get forwarded
+		action = resolve_id_from_text(event.text or "")
+		if action is not None:
+			await handle_chat_action(event)
+			return None
 		async with get_session() as session:
 			me: User | None = await session.scalar(select(User).where(User.user_id == user_tg_id))
 			if not me or getattr(me, "step", "start") != "chatting":
