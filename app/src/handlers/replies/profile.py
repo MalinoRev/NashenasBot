@@ -9,6 +9,7 @@ from src.databases.likes import Like
 from src.databases.states import State
 from src.databases.cities import City
 from src.context.messages.replies.profile import format_profile_caption
+from src.services.user_activity import get_last_activity_string
 from src.context.keyboards.inline.profile import build_profile_keyboard
 
 
@@ -36,6 +37,7 @@ async def handle_profile(user_id: int) -> dict:
 			if city_name_val:
 				city_name = city_name_val
 		unique_id = user.unique_id or str(user.id)
+		status = await get_last_activity_string(user.id)
 		caption = format_profile_caption(
 			name=name,
 			gender_text=gender_text,
@@ -44,6 +46,7 @@ async def handle_profile(user_id: int) -> dict:
 			age=age,
 			like_count=likes_count,
 			unique_id=unique_id,
+			last_activity=status,
 		)
 		# Prefer user custom avatar if exists under src/storage/avatars/{user_db_id}.jpg
 		# Resolve inside container relative to app root; check multiple known locations

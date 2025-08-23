@@ -8,6 +8,7 @@ from src.core.database import get_session
 from src.databases.users import User
 from src.databases.user_profiles import UserProfile
 from src.databases.likes import Like
+from src.services.user_activity import get_last_activity_string
 
 
 GenderFilter = Literal["boys", "girls", "all"]
@@ -76,9 +77,11 @@ async def generate_popular_list(tg_user_id: int, gender: GenderFilter, page: int
 				emoji = "❔"
 				gender_word = "نامشخص"
 			unique_id = u.unique_id or str(u.id)
+			status = await get_last_activity_string(u.id)
 			block_inner = (
 				f"🔸 {html.escape(str(likes))} ❤️ | {html.escape(str(name))} | {emoji} {gender_word} | سن: {html.escape(str(age))}\n"
-				f"👤 پروفایل: /user_{html.escape(str(unique_id))}"
+				f"👤 پروفایل: /user_{html.escape(str(unique_id))}\n"
+				f"آخرین فعالیت: {html.escape(status or 'نامشخص')}"
 			)
 			lines.append(f"<blockquote>{block_inner}</blockquote>")
 			lines.append("〰️" * 11)

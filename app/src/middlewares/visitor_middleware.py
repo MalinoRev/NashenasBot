@@ -11,6 +11,7 @@ from src.databases.likes import Like
 from src.databases.user_locations import UserLocation
 from src.context.keyboards.reply.mainButtons import build_keyboard as build_main_kb, build_keyboard_for
 from src.context.messages.visitor.profile_view import get_not_found_message, format_caption
+from src.services.user_activity import get_last_activity_string
 from src.context.keyboards.inline.visitor_profile import build_keyboard as build_visitor_kb
 
 
@@ -75,6 +76,7 @@ class VisitorMiddleware(BaseMiddleware):
 			if me:
 				liked = bool(await session.scalar(select(func.count(Like.id)).where(Like.user_id == me.id, Like.target_id == target.id)))
 			like_emoji = "❤️" if liked else "🤍"
+			status = await get_last_activity_string(target.id)
 			caption = format_caption(
 				name=name,
 				gender_text=gender_text,
@@ -83,7 +85,7 @@ class VisitorMiddleware(BaseMiddleware):
 				age=age,
 				unique_id=unique_id,
 				distance_text=distance_str,
-				last_activity=getattr(target, "last_activity", None),
+				last_activity=status,
 			)
 			# Photo resolution (same logic as profile)
 			from pathlib import Path

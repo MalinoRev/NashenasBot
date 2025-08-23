@@ -14,11 +14,9 @@ def format_caption(
 	age: str,
 	unique_id: str,
 	distance_text: str,
-	last_activity: datetime | None,
+	last_activity: str | None,
 ) -> str:
-	last_activity_text = (
-		f"آخرین فعالیت: {last_activity.strftime('%Y-%m-%d %H:%M')}" if last_activity else ""
-	)
+	last_activity_text = (f"آخرین فعالیت: {last_activity}" if last_activity else "")
 	lines: list[str] = [
 		f"• نام: {name}",
 		f"• جنسیت: {gender_text}",
