@@ -17,7 +17,14 @@ class ProcessingToastMiddleware(BaseMiddleware):
 		# Skip for pagination callbacks so handlers can show boundary alerts.
 		if isinstance(event, CallbackQuery):
 			data_str = getattr(event, "data", "") or ""
-			if not data_str.startswith("search_page:"):
+			# Skip toast for certain callbacks that need to show their own alerts
+			skip_prefixes = (
+				"search_page:",
+				"profile_chat_request:",
+				"chat_request_accept:",
+				"chat_request_reject:",
+			)
+			if not any(data_str.startswith(pref) for pref in skip_prefixes):
 				try:
 					await event.answer(get_processing_message(), show_alert=False)
 				except Exception:

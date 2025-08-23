@@ -28,6 +28,14 @@ async def handle_any_callback(callback: CallbackQuery) -> None:
 		from src.handlers.callbacks.random_match_state import handle_random_match_state_callback
 		await handle_random_match_state_callback(callback)
 		return
+	if data.startswith("profile_chat_request:"):
+		from src.handlers.callbacks.visitor_profile_chat_request import handle_visitor_profile_chat_request
+		await handle_visitor_profile_chat_request(callback)
+		return
+	if data.startswith("chat_request_reject:"):
+		from src.handlers.callbacks.chat_request_decisions import handle_chat_request_reject
+		await handle_chat_request_reject(callback)
+		return
 	if data == "nearby_distance:5":
 		from src.context.messages.callbacks.nearby_distance_5 import get_message as get_msg
 		from src.context.keyboards.inline.nearby_gender_5 import build_keyboard as build_kb
@@ -455,11 +463,12 @@ async def handle_any_callback(callback: CallbackQuery) -> None:
 
 		# Bound alerts
 		# Bounds checks BEFORE deleting current message
+		from src.context.alerts.search_bounds import get_first_page_message, get_last_page_message
 		if page <= 1 and at_first_page:
-			await callback.answer("شما صفحه اول هستید.", show_alert=True)
+			await callback.answer(get_first_page_message(), show_alert=True)
 			return
 		if not has_items and at_last_page:
-			await callback.answer("شما صفحه آخر هستید.", show_alert=True)
+			await callback.answer(get_last_page_message(), show_alert=True)
 			return
 
 		# Now safe to delete previous message and show new page

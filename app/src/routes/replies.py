@@ -160,8 +160,8 @@ async def handle_text_reply(message: Message) -> None:
 			user: User | None = await session.scalar(select(User).where(User.user_id == user_id))
 			if not user:
 				return
-			# Allow both sending_location and search_sending_location and special_contact to go back
-			if user.step not in ("sending_location", "search_sending_location", "search_special_contact"):
+			# Allow back for several transient steps
+			if user.step not in ("sending_location", "search_sending_location", "search_special_contact") and not user.step.startswith("chat_request_to_"):
 				return
 			user.step = "start"
 			await session.commit()
