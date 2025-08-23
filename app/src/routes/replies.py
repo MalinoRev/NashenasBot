@@ -385,6 +385,6 @@ async def handle_text_reply(message: Message) -> None:
 		await message.answer(result.get("text", ""), reply_markup=result.get("reply_markup"))
 		return
 
-	await message.answer("Text received, delegating to replies or default.")
+	await message.answer("🔸 متوجه نشدم چی میخوای 🙃\n\nاگر نیاز به کمک داری دستور /help رو بفرست")
 
 
