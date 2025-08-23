@@ -24,6 +24,7 @@ async def handle_chat_request_reject(callback: CallbackQuery) -> None:
 	# Notify the requester and reset their step
 	async with get_session() as session:
 		sender: User | None = await session.scalar(select(User).where(User.unique_id == sender_unique_id))
+		rejecter: User | None = await session.scalar(select(User).where(User.user_id == (callback.from_user.id if callback.from_user else 0)))
 		if sender:
 			# Reset step
 			sender.step = "start"
@@ -32,7 +33,8 @@ async def handle_chat_request_reject(callback: CallbackQuery) -> None:
 				from src.context.keyboards.reply.mainButtons import build_keyboard_for
 				from src.context.messages.commands.start import get_message as get_start_message
 				from aiogram.types import LinkPreviewOptions
-				await callback.bot.send_message(int(sender.user_id), f"❌ درخواست شما توسط /user_{sender_unique_id} رد شد")
+				rejecter_uid = (rejecter.unique_id if rejecter and rejecter.unique_id else (str(rejecter.id) if rejecter else ""))
+				await callback.bot.send_message(int(sender.user_id), f"❌ درخواست شما توسط /user_{rejecter_uid} رد شد")
 				name_display = None
 				# Cannot access requester's name here; send generic start
 				kb, _ = await build_keyboard_for(sender.user_id)
