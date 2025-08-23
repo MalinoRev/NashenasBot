@@ -12,6 +12,7 @@ from src.middlewares.processing_toast_middleware import ProcessingToastMiddlewar
 from src.middlewares.profile_completion_middleware import ProfileCompletionMiddleware
 from src.middlewares.no_command_middleware import NoCommandMiddleware
 from src.middlewares.visitor_middleware import VisitorMiddleware
+from src.middlewares.chat_forward_middleware import ChatForwardMiddleware
 
 
 def build_dispatcher() -> Dispatcher:
@@ -24,6 +25,7 @@ def build_dispatcher() -> Dispatcher:
 	profile_completion = ProfileCompletionMiddleware()
 	no_command = NoCommandMiddleware()
 	visitor = VisitorMiddleware()
+	chat_forward = ChatForwardMiddleware()
 	# Processing toast must run first
 	dp.message.middleware(processing)
 	dp.callback_query.middleware(processing)
@@ -37,6 +39,8 @@ def build_dispatcher() -> Dispatcher:
 	dp.callback_query.middleware(channels_guard)
 	# Block commands on restricted steps before hitting handlers
 	dp.message.middleware(no_command)
+	# Forward chat messages automatically when step == chatting
+	dp.message.middleware(chat_forward)
 	# Profile completion reward should run last
 	dp.message.middleware(profile_completion)
 	dp.callback_query.middleware(profile_completion)
