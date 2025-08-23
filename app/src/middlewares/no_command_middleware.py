@@ -14,7 +14,7 @@ from src.context.messages.no_command.blocked import get_message as get_blocked_m
 ALLOWED_COMMANDS_BY_STEP: dict[str, set[str]] = {
 	# While searching or sending location, require using on-screen buttons
 	"searching": {"/on", "/off", "/credit", "/link", "/instagram"},
-	"chatting": {"/help_deleteMessage"},
+	"chatting": {"/help_deleteMessage", "/delete_messages_*"},
 	"sending_location": set(),
 }
 
@@ -55,7 +55,15 @@ class NoCommandMiddleware(BaseMiddleware):
 			allowed_set = ALLOWED_COMMANDS_BY_STEP.get(user_step)
 			if allowed_set is not None:
 				allowed_lower = {cmd.lower() for cmd in allowed_set}
-				if command_name not in allowed_lower:
+				# Support wildcard pattern like '/delete_messages_*'
+				def _allowed(cmd: str) -> bool:
+					if cmd in allowed_lower:
+						return True
+					for pat in allowed_lower:
+						if pat.endswith("*") and cmd.startswith(pat[:-1]):
+							return True
+					return False
+				if not _allowed(command_name):
 					# Command not allowed in this step
 					await event.answer(get_blocked_message())
 					return None

@@ -293,6 +293,77 @@ async def deleted_account_command(message: Message) -> None:
 	return
 
 
+@router.message(F.text.regexp(r"^/delete_messages_\d+$"))
+async def delete_messages_command(message: Message) -> None:
+	from sqlalchemy import select, or_
+	from datetime import datetime, timedelta
+	from src.core.database import get_session
+	from src.databases.users import User
+	from src.databases.chats import Chat
+	from src.databases.chat_history import ChatHistory
+	from src.context.messages.chat.delete_success import get_message as get_delete_success
+
+	text = message.text or ""
+	chat_id_str = text.split("/delete_messages_", 1)[1]
+	try:
+		chat_id = int(chat_id_str)
+	except Exception:
+		return
+	user_tg_id = message.from_user.id if message.from_user else 0
+	from src.context.messages.chat.deleting_in_progress import get_message as get_deleting
+	await message.answer(get_deleting())
+	async with get_session() as session:
+		me: User | None = await session.scalar(select(User).where(User.user_id == user_tg_id))
+		if not me:
+			return
+		chat: Chat | None = await session.scalar(select(Chat).where(Chat.id == chat_id))
+		if not chat:
+			return
+		# Verify membership
+		if me.id not in (chat.user1_id, chat.user2_id):
+			return
+		# Check time window: allowed if ended_at is NULL or within 30 minutes
+		allowed = False
+		if chat.ended_at is None:
+			allowed = True
+		else:
+			try:
+				allowed = (datetime.utcnow() - chat.ended_at) <= timedelta(minutes=30)
+			except Exception:
+				allowed = False
+		if not allowed:
+			from src.context.messages.chat.delete_expired import get_message as get_delete_expired
+			await message.answer(get_delete_expired())
+			return
+		# Fetch chat history entries
+		records = list(await session.scalars(select(ChatHistory).where(ChatHistory.chat_id == chat.id)))
+		# Resolve both telegram ids
+		u1: User | None = await session.scalar(select(User).where(User.id == chat.user1_id))
+		u2: User | None = await session.scalar(select(User).where(User.id == chat.user2_id))
+		u1_tg = int(u1.user_id) if u1 and u1.user_id else None
+		u2_tg = int(u2.user_id) if u2 and u2.user_id else None
+		# Delete messages from both sides
+		for rec in records:
+			# Delete original from sender chat
+			try:
+				if rec.user_id == chat.user1_id and u1_tg:
+					await message.bot.delete_message(chat_id=u1_tg, message_id=int(rec.received_message_id))
+				elif rec.user_id == chat.user2_id and u2_tg:
+					await message.bot.delete_message(chat_id=u2_tg, message_id=int(rec.received_message_id))
+			except Exception:
+				pass
+			# Delete copy from partner chat
+			try:
+				if rec.user_id == chat.user1_id and u2_tg:
+					await message.bot.delete_message(chat_id=u2_tg, message_id=int(rec.sent_message_id))
+				elif rec.user_id == chat.user2_id and u1_tg:
+					await message.bot.delete_message(chat_id=u1_tg, message_id=int(rec.sent_message_id))
+			except Exception:
+				pass
+	await message.answer(get_delete_success())
+	return
+
+
 # /Instagram -> send intro + user's anon link (same as main:link second message)
 @router.message(Command("Instagram"))
 async def instagram_command(message: Message) -> None:
