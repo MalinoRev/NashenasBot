@@ -114,6 +114,18 @@ async def handle_any_callback(callback: CallbackQuery) -> None:
 		from src.handlers.callbacks.visitor_profile_direct import handle_visitor_profile_direct
 		await handle_visitor_profile_direct(callback)
 		return
+	if data.startswith("direct_send_confirm:"):
+		from src.handlers.callbacks.direct_send_flow import handle_direct_send_confirm
+		await handle_direct_send_confirm(callback)
+		return
+	if data.startswith("direct_send_cancel:"):
+		from src.handlers.callbacks.direct_send_flow import handle_direct_send_cancel
+		await handle_direct_send_cancel(callback)
+		return
+	if data.startswith("direct_send_edit:"):
+		from src.handlers.callbacks.direct_send_flow import handle_direct_send_edit
+		await handle_direct_send_edit(callback)
+		return
 	if data == "nearby:request_location":
 		from src.handlers.callbacks.nearby_request_location import handle_nearby_request_location
 		await handle_nearby_request_location(callback)
