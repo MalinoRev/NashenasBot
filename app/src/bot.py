@@ -74,6 +74,12 @@ async def start_polling_once(exit_on_disconnect: bool) -> None:
     if exit_on_disconnect:
         watcher_task = asyncio.create_task(_watch_connectivity(bot))
     try:
+        # Start matching loop in background
+        try:
+            from src.services.matching import run_matching_loop  # type: ignore
+            asyncio.create_task(run_matching_loop(bot))
+        except Exception:
+            pass
         await _backfill_pending_updates(bot, dp)
         await dp.start_polling(bot)
     finally:
