@@ -21,7 +21,7 @@ async def get_last_activity_string(user_id_internal: int) -> str:
 	"""
 	Return a human-friendly Persian string for last activity:
 	- "در حال چت" if step == chatting
-	- "لحظاتی پیش" for < 1 minute
+	- "آنلاین" for < 1 minute
 	- "N دقیقه پیش" for < 60 minutes
 	- "N ساعت پیش" for < 24 hours
 	- "N روز پیش" otherwise
@@ -40,7 +40,7 @@ async def get_last_activity_string(user_id_internal: int) -> str:
 		delta: timedelta = datetime.utcnow() - last
 		seconds = int(delta.total_seconds())
 		if seconds < 60:
-			return "لحظاتی پیش"
+			return "آنلاین"
 		minutes = seconds // 60
 		if minutes < 60:
 			return f"{minutes} دقیقه پیش"
