@@ -39,6 +39,8 @@ async def handle_random_match_nearby_callback(callback: CallbackQuery) -> None:
 			user_city_id=profile.city if profile and profile.city is not None else None,
 			user_age=profile.age if profile and profile.age is not None else 0,
 			message_id=sent.message_id,
+			user_is_boy=(False if (profile and profile.is_female is True) else True),
+			user_is_girl=(True if (profile and profile.is_female is True) else False),
 			user_location_x=(loc.location_x if loc else None),
 			user_location_y=(loc.location_y if loc else None),
 			filter_age_range_from=None,
