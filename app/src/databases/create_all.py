@@ -8,6 +8,8 @@ from .engine import engine
 from . import states as _states  # noqa: F401
 from . import users as _users  # noqa: F401
 from . import chats as _chats  # noqa: F401
+from . import directs as _directs  # noqa: F401
+from . import chat_requests as _chat_requests  # noqa: F401
 
 
 logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
