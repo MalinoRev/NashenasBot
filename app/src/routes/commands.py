@@ -400,6 +400,15 @@ async def test_cache_command(message: Message) -> None:
 	return
 
 
+# /test_regex -> test regex patterns (admin only)
+@router.message(Command("test_regex"))
+async def test_regex_command(message: Message) -> None:
+	from src.handlers.commands.test_regex import handle_test_regex
+
+	await handle_test_regex(message)
+	return
+
+
 # Optional: catch-all for any other command (text starting with "/")
 @router.message(F.text.startswith("/"))
 async def unknown_command(message: Message) -> None:

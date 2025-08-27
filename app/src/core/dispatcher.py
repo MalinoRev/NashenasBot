@@ -6,6 +6,7 @@ from src.routes.commands import router as commands_router
 from src.routes.default import router as default_router
 from src.routes.replies import router as replies_router
 from src.middlewares.auth_middleware import AuthMiddleware
+from src.middlewares.link_filter_middleware import LinkFilterMiddleware
 from src.middlewares.profile_middleware import ProfileMiddleware
 from src.middlewares.channel_join_middleware import ChannelJoinMiddleware
 from src.middlewares.processing_toast_middleware import ProcessingToastMiddleware
@@ -21,6 +22,7 @@ def build_dispatcher() -> Dispatcher:
 	# Global middlewares (order matters)
 	processing = ProcessingToastMiddleware()
 	auth = AuthMiddleware()
+	link_filter = LinkFilterMiddleware()
 	profile = ProfileMiddleware()
 	channels_guard = ChannelJoinMiddleware()
 	profile_completion = ProfileCompletionMiddleware()
@@ -31,9 +33,10 @@ def build_dispatcher() -> Dispatcher:
 	# Processing toast must run first
 	dp.message.middleware(processing)
 	dp.callback_query.middleware(processing)
-	# Then auth/profile/required-channels
+	# Then auth/link-filter/profile/required-channels
 	dp.message.middleware(auth)
 	dp.callback_query.middleware(auth)
+	dp.message.middleware(link_filter)  # Filter links in direct messages and chats
 	dp.message.middleware(profile)
 	dp.callback_query.middleware(profile)
 	# Channel membership check MUST run after other middlewares
