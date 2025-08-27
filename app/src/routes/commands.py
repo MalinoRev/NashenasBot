@@ -390,6 +390,16 @@ async def instagram_command(message: Message) -> None:
 			await message.answer(format_link(link))
 	return
 
+
+# /test_cache -> test cache channel access (admin only)
+@router.message(Command("test_cache"))
+async def test_cache_command(message: Message) -> None:
+	from src.handlers.commands.test_cache import handle_test_cache
+
+	await handle_test_cache(message)
+	return
+
+
 # Optional: catch-all for any other command (text starting with "/")
 @router.message(F.text.startswith("/"))
 async def unknown_command(message: Message) -> None:
