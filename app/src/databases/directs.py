@@ -11,7 +11,7 @@ class Direct(Base):
 	id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
 	user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), nullable=False)
 	target_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), nullable=False)
-	content: Mapped[str] = mapped_column(String(1000), nullable=False)
+	content: Mapped[str] = mapped_column(String(2000), nullable=False)  # JSON content
 	opened_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 	created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
 
