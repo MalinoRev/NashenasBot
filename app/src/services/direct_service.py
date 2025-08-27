@@ -187,27 +187,18 @@ class DirectService:
                         chat_id=telegram_chat_id,
                         text=message_text
                     )
-                elif message_type in ['image', 'video', 'animation', 'audio', 'document', 'sticker'] and media_id:
-                    # Try to get media from cache first
-                    media_data = await self.cache_service.get_media(media_id)
-                    if media_data and media_data['message']:
-                        cached_message = media_data['message']
-
-                        # Forward the cached media message
-                        try:
-                            await self.bot.forward_message(
-                                chat_id=telegram_chat_id,
-                                from_chat_id=cached_message.chat.id,
-                                message_id=cached_message.message_id
-                            )
-                        except Exception as e:
-                            print(f"Error forwarding cached media: {e}")
+                elif message_type in ['image', 'video', 'animation', 'audio', 'document', 'sticker']:
+                    if media_id:
+                        # Send media with caption from database
+                        success = await self.cache_service.send_media_with_caption(media_id, telegram_chat_id, message_text)
+                        if not success:
+                            # Fallback: send text message if media not available
                             await self.bot.send_message(
                                 chat_id=telegram_chat_id,
                                 text=f"❌ خطا در نمایش مدیا: {message_text}"
                             )
                     else:
-                        # Fallback: send text message if media not available
+                        # No media_id (CACHE_CHANNEL_ID not set), just send text
                         await self.bot.send_message(
                             chat_id=telegram_chat_id,
                             text=f"پیام مدیا: {message_text}"

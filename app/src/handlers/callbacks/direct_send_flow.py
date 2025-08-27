@@ -56,75 +56,51 @@ async def handle_direct_send_confirm(callback: CallbackQuery) -> None:
 		elif message_data.photo:
 			# Save photo to cache
 			media_id = await cache_service.save_media(message_data.photo[-1])
-			if media_id:
-				json_message_data = {
-					"message": message_data.caption or "",
-					"type": "image",
-					"media_id": media_id
-				}
-			else:
-				await callback.answer("❌ خطا در ذخیره‌سازی تصویر", show_alert=True)
-				return
+			json_message_data = {
+				"message": message_data.caption or "",  # Store caption, empty string if no caption
+				"type": "image",
+				"media_id": media_id  # Can be None if CACHE_CHANNEL_ID not set
+			}
 		elif message_data.video:
 			# Save video to cache
 			media_id = await cache_service.save_media(message_data.video)
-			if media_id:
-				json_message_data = {
-					"message": message_data.caption or "",
-					"type": "video",
-					"media_id": media_id
-				}
-			else:
-				await callback.answer("❌ خطا در ذخیره‌سازی ویدیو", show_alert=True)
-				return
+			json_message_data = {
+				"message": message_data.caption or "",  # Store caption, empty string if no caption
+				"type": "video",
+				"media_id": media_id  # Can be None if CACHE_CHANNEL_ID not set
+			}
 		elif message_data.animation:
 			# Save animation to cache
 			media_id = await cache_service.save_media(message_data.animation)
-			if media_id:
-				json_message_data = {
-					"message": message_data.caption or "",
-					"type": "animation",
-					"media_id": media_id
-				}
-			else:
-				await callback.answer("❌ خطا در ذخیره‌سازی گیف", show_alert=True)
-				return
+			json_message_data = {
+				"message": message_data.caption or "",  # Store caption, empty string if no caption
+				"type": "animation",
+				"media_id": media_id  # Can be None if CACHE_CHANNEL_ID not set
+			}
 		elif message_data.audio:
 			# Save audio to cache
 			media_id = await cache_service.save_media(message_data.audio)
-			if media_id:
-				json_message_data = {
-					"message": message_data.caption or "",
-					"type": "audio",
-					"media_id": media_id
-				}
-			else:
-				await callback.answer("❌ خطا در ذخیره‌سازی صدا", show_alert=True)
-				return
+			json_message_data = {
+				"message": message_data.caption or "",  # Store caption, empty string if no caption
+				"type": "audio",
+				"media_id": media_id  # Can be None if CACHE_CHANNEL_ID not set
+			}
 		elif message_data.document:
 			# Save document to cache
 			media_id = await cache_service.save_media(message_data.document)
-			if media_id:
-				json_message_data = {
-					"message": message_data.caption or "",
-					"type": "document",
-					"media_id": media_id
-				}
-			else:
-				await callback.answer("❌ خطا در ذخیره‌سازی فایل", show_alert=True)
-				return
+			json_message_data = {
+				"message": message_data.caption or "",  # Store caption, empty string if no caption
+				"type": "document",
+				"media_id": media_id  # Can be None if CACHE_CHANNEL_ID not set
+			}
 		elif message_data.sticker:
 			# Save sticker to cache
 			media_id = await cache_service.save_media(message_data.sticker)
-			if media_id:
-				json_message_data = {
-					"message": "",
-					"type": "sticker",
-					"media_id": media_id
-				}
-			else:
-				await callback.answer("❌ خطا در ذخیره‌سازی استیکر", show_alert=True)
-				return
+			json_message_data = {
+				"message": "",
+				"type": "sticker",
+				"media_id": media_id  # Can be None if CACHE_CHANNEL_ID not set
+			}
 		else:
 			await callback.answer("❌ نوع پیام پشتیبانی نمی‌شود", show_alert=True)
 			return
