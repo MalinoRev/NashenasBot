@@ -15,6 +15,7 @@ import src.databases.user_filters  # noqa: F401
 import src.databases.user_bans  # noqa: F401
 import src.databases.contacts  # noqa: F401
 import src.databases.prices  # noqa: F401
+import src.databases.requested_channels  # noqa: F401
 import src.databases.rewards  # noqa: F401
 import src.databases.chat_history  # noqa: F401
 import src.databases.likes  # noqa: F401
@@ -23,11 +24,10 @@ import src.databases.chat_queue  # noqa: F401
 import src.databases.user_blocked  # noqa: F401
 import src.databases.payments  # noqa: F401
 import src.databases.chats  # noqa: F401
-import src.databases.user_vips  # noqa: F401
-import src.databases.admins  # noqa: F401
 import src.databases.directs  # noqa: F401
 import src.databases.chat_requests  # noqa: F401
-import src.databases.media  # noqa: F401
+import src.databases.user_vips  # noqa: F401
+import src.databases.admins  # noqa: F401
 
 
 Action = Literal["create", "drop", "recreate"]

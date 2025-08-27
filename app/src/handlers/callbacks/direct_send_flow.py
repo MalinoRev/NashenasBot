@@ -8,7 +8,6 @@ from src.context.keyboards.inline.direct_send_confirm import build_keyboard as b
 from src.context.messages.commands.start import get_message as get_start_message
 from src.context.keyboards.reply.mainButtons import build_keyboard_for
 from src.services.direct_draft_cache import get_draft, clear_draft
-from src.services.direct_message import DirectMessageService
 
 
 async def handle_direct_send_confirm(callback: CallbackQuery) -> None:
@@ -39,44 +38,17 @@ async def handle_direct_send_confirm(callback: CallbackQuery) -> None:
 		if int(me.credit or 0) <= 0:
 			await callback.answer("❌ موجودی سکه شما کافی نیست.", show_alert=True)
 			return
-		
-		# Use DirectMessageService to store the message
-		direct_service = DirectMessageService(callback.message.bot)
-		
-		# Get the original message from draft
-		from aiogram.types import Message
-		original_message: Message = await callback.message.bot.get_message(
-			chat_id=from_chat_id, 
-			message_id=message_id
-		)
-		
-		if not original_message:
-			await callback.answer("❌ پیام اصلی یافت نشد.", show_alert=True)
-			return
-		
-		# Store message in directs table
-		direct_id = await direct_service.send_direct_message(
-			from_user_id=me.id,
-			to_user_id=target.id,
-			message=original_message
-		)
-		
-		if not direct_id:
-			await callback.answer("❌ خطا در ذخیره پیام.", show_alert=True)
-			return
-		
-		# Send notification to target user
+		# Send header with sender link
 		from src.context.messages.direct.received_header import format_message as _fmt_header
+		# Resolve sender unique id
 		sender_uid = me.unique_id if me.unique_id else str(me.id)
 		try:
-			await callback.message.bot.send_message(
-				chat_id=int(target.user_id), 
-				text=_fmt_header(sender_uid)
-			)
+			await callback.message.bot.send_message(chat_id=int(target.user_id), text=_fmt_header(sender_uid))
+			# Copy exact original message (supports text/media)
+			await callback.message.bot.copy_message(chat_id=int(target.user_id), from_chat_id=from_chat_id, message_id=message_id)
 		except Exception:
 			pass
-		
-		# Deduct credit and reset
+		# Deduct and reset
 		me.credit = int(me.credit or 0) - 1
 		me.step = "start"
 		# Clear draft
