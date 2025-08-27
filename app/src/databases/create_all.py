@@ -1,8 +1,7 @@
 import asyncio
 import logging
 
-from .base import Base
-from .engine import engine
+from src.core.database import Base, engine
 
 # Import models so that they are registered on Base.metadata
 from . import admins as _admins  # noqa: F401
@@ -14,6 +13,7 @@ from . import cities as _cities  # noqa: F401
 from . import contacts as _contacts  # noqa: F401
 from . import directs as _directs  # noqa: F401
 from . import likes as _likes  # noqa: F401
+from . import media as _media  # noqa: F401
 from . import payments as _payments  # noqa: F401
 from . import prices as _prices  # noqa: F401
 from . import requested_channels as _requested_channels  # noqa: F401
