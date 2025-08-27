@@ -80,13 +80,6 @@ async def start_polling_once(exit_on_disconnect: bool) -> None:
             asyncio.create_task(run_matching_loop(bot))
         except Exception:
             pass
-
-        # Initialize cache service
-        try:
-            from src.services.cache import init_cache_service
-            await init_cache_service(bot)
-        except Exception as e:
-            logging.error(f"Failed to initialize cache service: {e}")
         await _backfill_pending_updates(bot, dp)
         await dp.start_polling(bot)
     finally:
