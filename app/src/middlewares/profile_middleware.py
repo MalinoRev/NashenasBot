@@ -123,13 +123,26 @@ class ProfileMiddleware(BaseMiddleware):
 						)
 						return None
 					# Save draft and show confirm UI replying to user's message
-					from src.services.direct_draft_cache import set_draft
+					from src.services.direct_draft_cache import set_draft, MessageData
 					from src.context.keyboards.inline.direct_send_confirm import build_keyboard as _build_confirm_kb
 					from src.context.messages.direct.confirm_preview import format_message as _confirm_text
 					from src.databases.users import User as _U2
 					target_user: _U2 | None = await session.scalar(select(_U2).where(_U2.id == target_internal_id))
 					target_uid = target_user.unique_id if target_user and target_user.unique_id else str(target_internal_id)
-					set_draft(user.id, event.chat.id, event.message_id, target_internal_id)
+
+					# Create MessageData object with message content
+					message_data = MessageData(
+						text=event.text,
+						photo=event.photo,
+						video=event.video,
+						animation=event.animation,
+						audio=event.audio,
+						document=event.document,
+						sticker=event.sticker,
+						caption=event.caption
+					)
+
+					set_draft(user.id, event.chat.id, event.message_id, target_internal_id, message_data)
 					# Reply to user's own message with confirm note
 					await event.bot.send_message(
 						chat_id=event.chat.id,

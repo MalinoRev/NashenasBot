@@ -528,6 +528,10 @@ async def handle_any_callback(callback: CallbackQuery) -> None:
 		from src.handlers.callbacks.coin_buy import handle_coin_buy
 		await handle_coin_buy(callback)
 		return
+	if data.startswith("direct_view:"):
+		from src.handlers.callbacks.direct_view import handle_direct_view
+		await handle_direct_view(callback)
+		return
 	await callback.answer()
 	await callback.message.answer("❌ در هنگام پردازش درخواست شما خطایی رخ داد ❌")
 

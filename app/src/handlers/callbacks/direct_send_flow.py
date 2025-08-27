@@ -8,6 +8,8 @@ from src.context.keyboards.inline.direct_send_confirm import build_keyboard as b
 from src.context.messages.commands.start import get_message as get_start_message
 from src.context.keyboards.reply.mainButtons import build_keyboard_for
 from src.services.direct_draft_cache import get_draft, clear_draft
+from src.services.direct_service import DirectService
+from src.services.cache import CacheService
 
 
 async def handle_direct_send_confirm(callback: CallbackQuery) -> None:
@@ -27,41 +29,129 @@ async def handle_direct_send_confirm(callback: CallbackQuery) -> None:
 		if not (getattr(me, "step", "").startswith("direct_to_") and draft is not None):
 			await callback.answer()
 			return
-		from_chat_id, message_id, target_internal_id = draft
+		from_chat_id, message_id, target_internal_id, message_data = draft
 		# Fetch target telegram user
 		from src.databases.users import User as _U
 		target: _U | None = await session.scalar(select(_U).where(_U.id == target_internal_id))
 		if not target or not target.user_id:
 			await callback.answer("کاربر مقصد یافت نشد.")
 			return
-		# Charge credit and send
+		# Charge credit
 		if int(me.credit or 0) <= 0:
 			await callback.answer("❌ موجودی سکه شما کافی نیست.", show_alert=True)
 			return
-		# Send header with sender link
-		from src.context.messages.direct.received_header import format_message as _fmt_header
-		# Resolve sender unique id
-		sender_uid = me.unique_id if me.unique_id else str(me.id)
-		try:
-			await callback.message.bot.send_message(chat_id=int(target.user_id), text=_fmt_header(sender_uid))
-			# Copy exact original message (supports text/media)
-			await callback.message.bot.copy_message(chat_id=int(target.user_id), from_chat_id=from_chat_id, message_id=message_id)
-		except Exception:
-			pass
-		# Deduct and reset
+
+		# Initialize services
+		direct_service = DirectService(callback.message.bot)
+		cache_service = CacheService(callback.message.bot)
+
+		# Process the stored message data
+		json_message_data = {}
+
+		if message_data.text:
+			json_message_data = {
+				"message": message_data.text[:200],  # Limit to 200 chars
+				"type": "text"
+			}
+		elif message_data.photo:
+			# Save photo to cache
+			media_id = await cache_service.save_media(message_data.photo[-1])
+			if media_id:
+				json_message_data = {
+					"message": message_data.caption or "",
+					"type": "image",
+					"media_id": media_id
+				}
+			else:
+				await callback.answer("❌ خطا در ذخیره‌سازی تصویر", show_alert=True)
+				return
+		elif message_data.video:
+			# Save video to cache
+			media_id = await cache_service.save_media(message_data.video)
+			if media_id:
+				json_message_data = {
+					"message": message_data.caption or "",
+					"type": "video",
+					"media_id": media_id
+				}
+			else:
+				await callback.answer("❌ خطا در ذخیره‌سازی ویدیو", show_alert=True)
+				return
+		elif message_data.animation:
+			# Save animation to cache
+			media_id = await cache_service.save_media(message_data.animation)
+			if media_id:
+				json_message_data = {
+					"message": message_data.caption or "",
+					"type": "animation",
+					"media_id": media_id
+				}
+			else:
+				await callback.answer("❌ خطا در ذخیره‌سازی گیف", show_alert=True)
+				return
+		elif message_data.audio:
+			# Save audio to cache
+			media_id = await cache_service.save_media(message_data.audio)
+			if media_id:
+				json_message_data = {
+					"message": message_data.caption or "",
+					"type": "audio",
+					"media_id": media_id
+				}
+			else:
+				await callback.answer("❌ خطا در ذخیره‌سازی صدا", show_alert=True)
+				return
+		elif message_data.document:
+			# Save document to cache
+			media_id = await cache_service.save_media(message_data.document)
+			if media_id:
+				json_message_data = {
+					"message": message_data.caption or "",
+					"type": "document",
+					"media_id": media_id
+				}
+			else:
+				await callback.answer("❌ خطا در ذخیره‌سازی فایل", show_alert=True)
+				return
+		elif message_data.sticker:
+			# Save sticker to cache
+			media_id = await cache_service.save_media(message_data.sticker)
+			if media_id:
+				json_message_data = {
+					"message": "",
+					"type": "sticker",
+					"media_id": media_id
+				}
+			else:
+				await callback.answer("❌ خطا در ذخیره‌سازی استیکر", show_alert=True)
+				return
+		else:
+			await callback.answer("❌ نوع پیام پشتیبانی نمی‌شود", show_alert=True)
+			return
+
+		# Save direct message to database
+		direct_id = await direct_service.save_direct(me.id, target.id, json_message_data)
+		if not direct_id:
+			await callback.answer("❌ خطا در ذخیره‌سازی پیام", show_alert=True)
+			return
+
+		# Deduct credit and reset step
 		me.credit = int(me.credit or 0) - 1
 		me.step = "start"
-		# Clear draft
 		clear_draft(me.id)
 		await session.commit()
+
+		# Send notification to receiver
+		await direct_service.send_notification_to_receiver(int(target.user_id), direct_id)
+
 		# Acknowledge and send /start
 		name_display = callback.from_user.first_name if callback.from_user else None
 		start_text = get_start_message(name_display)
 		kb, _ = await build_keyboard_for(user_id)
 		try:
-			await callback.message.edit_text("✅ پیام شما ارسال شد.")
+			await callback.message.edit_text("✅ پیام شما با موفقیت ذخیره شد و برای دریافت‌کننده ارسال خواهد شد.")
 		except Exception:
-			await callback.message.answer("✅ پیام شما ارسال شد.")
+			await callback.message.answer("✅ پیام شما با موفقیت ذخیره شد و برای دریافت‌کننده ارسال خواهد شد.")
 		await callback.message.answer(
 			start_text,
 			reply_markup=kb,
