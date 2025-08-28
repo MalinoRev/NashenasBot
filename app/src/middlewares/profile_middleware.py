@@ -480,6 +480,7 @@ class ProfileMiddleware(BaseMiddleware):
 
 			# Step 4: city (and edit flow)
 			if profile.city is None or getattr(user, "step", "start") == "edit_city":
+				print(f"LOG: Entered city selection step - user.step: {getattr(user, 'step', 'start')}, profile.city: {profile.city}")
 				if user.step not in {"ask_city", "edit_city"}:
 					user.step = "ask_city"
 					await session.commit()
@@ -511,10 +512,17 @@ class ProfileMiddleware(BaseMiddleware):
 					await event.answer(get_invalid_city_message(), reply_markup=city_kb3)
 					return None
 				profile.city = city.id
+
+				# Check if this is first-time completion or edit
+				current_step = getattr(user, "step", "start")
+				was_edit_flow = current_step == "edit_city"
+
+				print(f"LOG: City selected - current_step: {current_step}, was_edit_flow: {was_edit_flow}")
+
 				user.step = "start"
 				await session.commit()
-				# If this was edit flow, send success + /start, else complete profile
-				if getattr(user, "step", "start") == "start" and profile.name is not None and profile.is_female is not None and profile.age is not None:
+
+				if was_edit_flow:
 					# Edited flow path ends here
 					await event.answer(get_state_city_updated_message(), reply_markup=ReplyKeyboardRemove())
 					name_display = None
@@ -530,9 +538,29 @@ class ProfileMiddleware(BaseMiddleware):
 					)
 					data["profile_ok"] = False
 					return None
-				# Normal flow completion
+
+				# Normal flow completion (first time profile completion)
+				print("LOG: Executing normal flow completion (first time)")
 				main_kb, _ = await build_keyboard_for(event.from_user.id if event.from_user else None)
 				await event.answer(get_profile_completed_message(), reply_markup=main_kb)
+
+				# Send profile completion info message (only for first-time completion)
+				try:
+					# Get profile reward amount from database
+					from src.databases.rewards import Reward
+					reward: Reward | None = await session.scalar(select(Reward))
+					profile_reward_amount = int(getattr(reward, "profile_amount", 0)) if reward else 0
+
+					# Get message from context
+					from src.context.messages.profileMiddleware.profileCompletionInfo import get_message as get_info_message
+					info_message = get_info_message(profile_reward_amount)
+
+					await event.answer(info_message)
+					print(f"LOG: Profile completion info message sent to user {user_id} (first time)")
+
+				except Exception as e:
+					print(f"LOG: Failed to send profile completion info message: {e}")
+
 				data["profile_ok"] = False
 				return None
 
