@@ -8,6 +8,7 @@ router = Router(name="callbacks")
 @router.callback_query()
 async def handle_any_callback(callback: CallbackQuery) -> None:
 	data = callback.data or ""
+	print(f"LOG: handle_any_callback called with data: '{data}'")
 	if data == "random_match:random":
 		from src.handlers.callbacks.random_match import handle_random_match_callback
 		await handle_random_match_callback(callback)
@@ -29,6 +30,7 @@ async def handle_any_callback(callback: CallbackQuery) -> None:
 		await handle_random_match_state_callback(callback)
 		return
 	if data.startswith("profile_chat_request:"):
+		print(f"LOG: Routing callback to profile_chat_request handler: {data}")
 		from src.handlers.callbacks.visitor_profile_chat_request import handle_visitor_profile_chat_request
 		await handle_visitor_profile_chat_request(callback)
 		return
@@ -42,6 +44,7 @@ async def handle_any_callback(callback: CallbackQuery) -> None:
 		return
 
 	if data.startswith("chat_request_view:"):
+		print(f"LOG: Routing callback to chat_request_view handler: {data}")
 		from src.handlers.callbacks.chat_request_view import handle_chat_request_view
 		await handle_chat_request_view(callback)
 		return

@@ -13,6 +13,8 @@ class ChatRequest(Base):
     target_id = Column(BigInteger, ForeignKey('users.id'), nullable=False, index=True)
     accepted_at = Column(DateTime, nullable=True)
     rejected_at = Column(DateTime, nullable=True)
+    canceled_at = Column(DateTime, nullable=True)
+    request_message_id = Column(BigInteger, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     # Relationships

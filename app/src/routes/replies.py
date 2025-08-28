@@ -14,8 +14,10 @@ router = Router(name="replies")
 
 @router.message()
 async def handle_text_reply(message: Message) -> None:
+	print(f"LOG: handle_text_reply called with text: '{message.text}'")
 	# This router handles plain text messages that are not commands
 	if message.text and message.text.startswith("/"):
+		print("LOG: Message starts with '/', letting commands router handle it")
 		# Let commands router handle it
 		return
 
@@ -153,9 +155,12 @@ async def handle_text_reply(message: Message) -> None:
 	nearby_id = resolve_nearby_reply_id(text)
 	from src.context.keyboards.reply.special_contact import resolve_id_from_text as resolve_special_back
 	special_id = resolve_special_back(text)
+	print(f"LOG: Checking back buttons - nearby_id: '{nearby_id}', special_id: '{special_id}'")
 	if nearby_id == "nearby:back" or nearby_id == "search:back" or special_id == "special:back":
+		print(f"LOG: Back button detected: nearby='{nearby_id}', special='{special_id}'")
 		from src.core.database import get_session
 		from src.databases.users import User
+		from src.services.chat_request_service import ChatRequestService
 		from sqlalchemy import select
 
 		user_id = message.from_user.id if message.from_user else 0
@@ -163,11 +168,61 @@ async def handle_text_reply(message: Message) -> None:
 			user: User | None = await session.scalar(select(User).where(User.user_id == user_id))
 			if not user:
 				return
+
+			# Handle chat request cancellation
+			if user.step.startswith("chat_request_to_"):
+				print(f"LOG: Chat request cancellation detected for step: '{user.step}'")
+				# Extract target ID from step
+				try:
+					target_db_id = int(user.step.replace("chat_request_to_", ""))
+					print(f"LOG: Extracted target_db_id = {target_db_id}")
+
+					# Get target user's Telegram ID from database
+					print(f"LOG: Looking for target user with id = {target_db_id}")
+					target_user: User | None = await session.scalar(select(User).where(User.id == target_db_id))
+					if not target_user:
+						print(f"LOG: Target user with id {target_db_id} not found")
+						await message.answer("❌ کاربر مورد نظر یافت نشد.")
+						return
+
+					target_telegram_id = target_user.user_id
+					print(f"LOG: Target user found: id={target_user.id}, user_id={target_telegram_id}, unique_id='{target_user.unique_id}'")
+
+					# Cancel the chat request
+					print(f"LOG: Calling cancel_chat_request with user.id={user.id}, target_db_id={target_db_id}")
+					success, message_id_to_delete = await ChatRequestService.cancel_chat_request(user.id, target_db_id)
+					print(f"LOG: cancel_chat_request result: success={success}, message_id_to_delete={message_id_to_delete}")
+
+					if success:
+						# Delete the notification message from target user
+						if message_id_to_delete:
+							try:
+								print(f"LOG: Deleting message {message_id_to_delete} from chat {target_telegram_id}")
+								await message.bot.delete_message(
+									chat_id=int(target_telegram_id),
+									message_id=message_id_to_delete
+								)
+								print("LOG: Message deleted successfully")
+							except Exception as e:
+								print(f"ERROR: Failed to delete notification message {message_id_to_delete}: {e}")
+
+						await message.answer("✅ درخواست چت کنسل شد.")
+						print("LOG: Cancellation completed successfully")
+					else:
+						await message.answer("❌ خطا در کنسل کردن درخواست.")
+						print("LOG: Cancellation failed")
+
+				except (ValueError, Exception) as e:
+					print(f"ERROR: Failed to parse target ID from step {user.step}: {e}")
+					await message.answer("❌ خطا در کنسل کردن درخواست.")
+
 			# Allow back for several transient steps
 			if user.step not in ("sending_location", "search_sending_location", "search_special_contact") and not user.step.startswith("chat_request_to_"):
 				return
+
 			user.step = "start"
 			await session.commit()
+
 		# Send the same start message + main keyboard as /start
 		name = (message.from_user.first_name if message.from_user else None) or (message.from_user.username if message.from_user else None)
 		start_text = get_start_message(name)
@@ -228,7 +283,9 @@ async def handle_text_reply(message: Message) -> None:
 				return
 
 	main_id = resolve_main_id(text)
+	print(f"LOG: main_id resolved from text '{text}': '{main_id}'")
 	if main_id == "main:my_anon_link":
+		print("LOG: My anon link button clicked")
 		from src.handlers.replies.my_anon_link import handle_my_anon_link
 		from src.core.database import get_session
 		from src.databases.users import User

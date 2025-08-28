@@ -31,14 +31,23 @@ async def handle_chat_request_reject(callback: CallbackQuery) -> None:
 					ChatRequest.user_id == sender.id,
 					ChatRequest.target_id == rejecter.id,
 					ChatRequest.accepted_at.is_(None),
-					ChatRequest.rejected_at.is_(None)
+					ChatRequest.rejected_at.is_(None),
+					ChatRequest.canceled_at.is_(None)  # Check if not canceled
 				)
 			)
 
-			if chat_request:
-				from datetime import datetime
-				chat_request.rejected_at = datetime.utcnow()
-				await session.commit()
+			if not chat_request:
+				await callback.answer("این درخواست چت کنسل شده یا یافت نشد.", show_alert=True)
+				return
+
+			# Double check if request was canceled
+			if chat_request.canceled_at:
+				await callback.answer("این درخواست چت توسط ارسال‌کننده کنسل شده است.", show_alert=True)
+				return
+
+			from datetime import datetime
+			chat_request.rejected_at = datetime.utcnow()
+			await session.commit()
 
 			# Delete decision message
 			try:
@@ -100,13 +109,22 @@ async def handle_chat_request_accept(callback: CallbackQuery) -> None:
 					ChatRequest.user_id == sender.id,
 					ChatRequest.target_id == receiver.id,
 					ChatRequest.accepted_at.is_(None),
-					ChatRequest.rejected_at.is_(None)
+					ChatRequest.rejected_at.is_(None),
+					ChatRequest.canceled_at.is_(None)  # Check if not canceled
 				)
 			)
 
-			if chat_request:
-				from datetime import datetime
-				chat_request.accepted_at = datetime.utcnow()
+			if not chat_request:
+				await callback.answer("این درخواست چت کنسل شده یا یافت نشد.", show_alert=True)
+				return
+
+			# Double check if request was canceled
+			if chat_request.canceled_at:
+				await callback.answer("این درخواست چت توسط ارسال‌کننده کنسل شده است.", show_alert=True)
+				return
+
+			from datetime import datetime
+			chat_request.accepted_at = datetime.utcnow()
 
 			# Update steps
 			sender.step = "chatting"
