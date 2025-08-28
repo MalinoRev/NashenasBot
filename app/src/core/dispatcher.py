@@ -15,6 +15,7 @@ from src.middlewares.no_command_middleware import NoCommandMiddleware
 from src.middlewares.visitor_middleware import VisitorMiddleware
 from src.middlewares.chat_forward_middleware import ChatForwardMiddleware
 from src.middlewares.activity_middleware import ActivityMiddleware
+from src.middlewares.referral_middleware import ReferralMiddleware
 
 
 def build_dispatcher() -> Dispatcher:
@@ -30,6 +31,7 @@ def build_dispatcher() -> Dispatcher:
 	visitor = VisitorMiddleware()
 	chat_forward = ChatForwardMiddleware()
 	activity = ActivityMiddleware()
+	referral = ReferralMiddleware()
 	# Processing toast must run first
 	dp.message.middleware(processing)
 	dp.callback_query.middleware(processing)
@@ -54,6 +56,9 @@ def build_dispatcher() -> Dispatcher:
 	dp.callback_query.middleware(profile_completion)
 	# Visitor middleware MUST run after everything else
 	dp.message.middleware(visitor)
+	# Referral middleware runs last to process referral rewards
+	dp.message.middleware(referral)
+	dp.callback_query.middleware(referral)
 	# Attach routers
 	dp.include_router(commands_router)
 	dp.include_router(callbacks_router)
