@@ -42,6 +42,29 @@ class AuthMiddleware(BaseMiddleware):
 				data["auth_ok"] = True
 				return await handler(event, data)
 
+		# Check for referral from start payload (only for new users)
+		referraled_by = None
+		if isinstance(event, Message) and event.text:
+			# Check if message starts with /start and has payload
+			if event.text.startswith("/start "):
+				start_payload = event.text.split(" ", 1)[1]  # Get part after /start
+				print(f"LOG: Found start_payload: '{start_payload}'")
+
+				# Check if payload starts with "inv_"
+				if start_payload.startswith("inv_"):
+					referral_code = start_payload[4:]  # Remove "inv_" prefix
+					print(f"LOG: Extracted referral_code: '{referral_code}'")
+
+					# Find referrer by referral_id (reuse existing session)
+					referrer = await session.scalar(
+						select(User.id).where(User.referral_id == referral_code)
+					)
+					if referrer:
+						referraled_by = referrer
+						print(f"LOG: Found referrer with id: {referrer}")
+					else:
+						print(f"LOG: No referrer found with referral_code: '{referral_code}'")
+
 		# Create new user record
 		alphabet = string.ascii_letters + string.digits
 		uid = "".join(secrets.choice(alphabet) for _ in range(12))
@@ -52,6 +75,7 @@ class AuthMiddleware(BaseMiddleware):
 			tg_name=name_value,
 			unique_id=uid,
 			referral_id=ref_id,
+			referraled_queue=referraled_by,
 			step="start",
 		)
 		try:

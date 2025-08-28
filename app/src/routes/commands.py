@@ -381,11 +381,11 @@ async def instagram_command(message: Message) -> None:
 			return
 
 	await message.answer(get_intro())
-	# Build fresh link from unique_id to ensure only the URL is sent
+	# Build fresh link from referral_id to ensure only the URL is sent
 	async with get_session() as session2:
 		user2: User | None = await session2.scalar(select(User).where(User.user_id == user_id))
-		unique_id = user2.unique_id if user2 else None
-		link = get_link(unique_id)
+		referral_id = user2.referral_id if user2 else None
+		link = get_link(referral_id)
 		if link:
 			await message.answer(format_link(link))
 	return

@@ -20,6 +20,7 @@ class User(Base):
 	unique_id: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=False)
 	referral_id: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=False)
 	referraled_by: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("users.id"), nullable=True)
+	referraled_queue: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("users.id"), nullable=True)
 	last_activity: Mapped[DateTime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
 	step: Mapped[str | None] = mapped_column(String(255), nullable=False)
 	created_at: Mapped[DateTime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))

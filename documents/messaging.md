@@ -37,7 +37,7 @@ This document explains the generic pattern for sending messages and photos in th
 
 - **Environment usage**:
   - `TELEGRAM_BOT_USERNAME` is read in code when generating deep links.
-  - Deep-link format example: [Telegram deep-link format](https://telegram.me/ENV:USERNAME?start=UNIQUEID)
+  - Deep-link format example: [Telegram deep-link format](https://telegram.me/ENV:USERNAME?start=inv_REFERRALID)
 
 - **Gating (profile and step)**:
   - `ProfileMiddleware` blocks commands and runs an interactive flow until a `UserProfile` exists with non-null `name`, `is_female`, `age`, `state`, `city`.
@@ -95,7 +95,7 @@ This document explains the generic pattern for sending messages and photos in th
 
 - **استفاده از متغیرهای محیطی**:
   - `TELEGRAM_BOT_USERNAME` برای ساخت لینک‌های دیپ استفاده می‌شود.
-  - نمونه فرمت لینک: [Telegram deep-link format](https://telegram.me/ENV:USERNAME?start=UNIQUEID)
+  - نمونه فرمت لینک: [Telegram deep-link format](https://telegram.me/ENV:USERNAME?start=inv_REFERRALID)
 
 - **گیتینگ (پروفایل و step)**:
   - `ProfileMiddleware` تا زمانی‌که پروفایل کامل نشود (وجود `UserProfile` و پر بودن `name`, `is_female`, `age`, `state`, `city`) فرمان‌ها را مسدود می‌کند و جریان پرسش تعاملی را اجرا می‌کند.

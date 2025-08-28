@@ -5,12 +5,12 @@ def format_link(link: str) -> str:
 
 
 
-def get_link(unique_id: str | None) -> str:
-	if not unique_id:
+def get_link(referral_id: str | None) -> str:
+	if not referral_id:
 		return ""
 	bot_username = os.getenv("TELEGRAM_BOT_USERNAME")
 	if not bot_username:
 		return ""
-	return f"https://telegram.me/{bot_username}?start={unique_id}"
+	return f"https://telegram.me/{bot_username}?start=inv_{referral_id}"
 
 
