@@ -153,18 +153,25 @@ class ProfileMiddleware(BaseMiddleware):
 					# Do not consume credit now; wait for confirm
 					return None
 
-			# Direct list message flow intercept: if user.step like direct_list_{kind}_{page}, collect message for list sending
+			# Direct list message flow intercept: if user.step like direct_list_to_{id-id-...}, collect message for list sending
 			if getattr(user, "step", "").startswith("direct_list_"):
 				# Parse step to get kind and page (kind may contain underscores)
+				kind = None
+				page = None
+				recipients_ids: list[int] = []
 				try:
 					rest = user.step[len("direct_list_"):]
-					kind, page_str = rest.rsplit("_", 1)
-					page = int(page_str)
+					if rest.startswith("to_"):
+						ids_str = rest[len("to_"):]
+						recipients_ids = [int(x) for x in ids_str.split("-") if x.isdigit()]
+					else:
+						# legacy pattern direct_list_{kind}_{page}
+						kind, page_str = rest.rsplit("_", 1)
+						page = int(page_str)
 				except Exception:
-					kind = None
-					page = None
+					pass
 				
-				if kind is not None and page is not None:
+				if recipients_ids or (kind is not None and page is not None):
 					# If user pressed back, cancel and show /start
 					from src.context.keyboards.reply.special_contact import resolve_id_from_text as _resolve_special_back
 					if _resolve_special_back(text) == "special:back":
@@ -195,7 +202,7 @@ class ProfileMiddleware(BaseMiddleware):
 						sticker=event.sticker,
 						caption=event.caption,
 					)
-					# Build JSON content identical to single direct flow, but without target_id (list sending later)
+					# Build JSON content identical to single direct flow, will be replicated per recipient in next phase
 					json_message_data = {}
 					if message_data.text:
 						json_message_data = {"message": message_data.text, "type": "text"}
@@ -235,24 +242,28 @@ class ProfileMiddleware(BaseMiddleware):
 						return None
 					# Save the direct as a list draft entry per-user (temporary target_id = sender for now)
 					from src.databases.directs import Direct
-					# Persist a single row that represents the composed message for list send later
-					# We'll store target_id = user.id (sender) as placeholder; next phase will fan-out
 					from sqlalchemy import insert
-					await session.execute(
-						insert(Direct).values(user_id=user.id, target_id=user.id, content=json_message_data)
-					)
-					# Keep step as direct_list_{kind}_{page} (like single direct keeps direct_to_) until user confirms/cancels
+					if recipients_ids:
+						# Save one row per recipient id
+						for rid in recipients_ids:
+							await session.execute(insert(Direct).values(user_id=user.id, target_id=rid, content=json_message_data))
+					else:
+						# Fallback: store as self to be handled later (should not happen with new flow)
+						await session.execute(insert(Direct).values(user_id=user.id, target_id=user.id, content=json_message_data))
+					# Keep step with stabilized recipient ids until user confirms/cancels
 					await session.commit()
 					# Send list confirmation preview with confirm/cancel/edit keyboard
 					from src.context.messages.direct.list_confirm_preview import format_message as _list_preview
 					from src.context.keyboards.inline.direct_list_send_confirm import build_keyboard as _list_kb
 					try:
-						await event.answer(
-							_list_preview(kind, page),
-							reply_markup=_list_kb(kind, page)
-						)
+						# Show recipients info in preview if available
+						preview_text = _list_preview(kind or "list", page or 1)
+						if recipients_ids:
+							rec_preview = "\n" + "\n".join([f"- ID:{rid}" for rid in recipients_ids])
+							preview_text = preview_text + "\n" + "گیرندگان: \n" + rec_preview
+						await event.answer(preview_text, reply_markup=_list_kb(kind or "list", page or 1))
 					except Exception:
-						await event.answer(_list_preview(kind, page))
+						await event.answer(_list_preview(kind or "list", page or 1))
 					return None
 
 			# If a command is sent while profile is not complete, block it
