@@ -540,6 +540,22 @@ async def handle_any_callback(callback: CallbackQuery) -> None:
 		from src.handlers.callbacks.direct_view import handle_direct_view
 		await handle_direct_view(callback)
 		return
+	if data.startswith("direct_list_send_confirm:"):
+		from src.handlers.callbacks.direct_list_send_flow import handle_direct_list_send_confirm
+		await handle_direct_list_send_confirm(callback)
+		return
+	if data.startswith("direct_list_send_cancel:"):
+		from src.handlers.callbacks.direct_list_send_flow import handle_direct_list_send_cancel
+		await handle_direct_list_send_cancel(callback)
+		return
+	if data.startswith("direct_list_send_edit:"):
+		from src.handlers.callbacks.direct_list_send_flow import handle_direct_list_send_edit
+		await handle_direct_list_send_edit(callback)
+		return
+	if data.startswith("direct_list:"):
+		from src.handlers.callbacks.direct_list import handle_direct_list
+		await handle_direct_list(callback)
+		return
 	await callback.answer()
 	await callback.message.answer("❌ در هنگام پردازش درخواست شما خطایی رخ داد ❌")
 

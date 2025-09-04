@@ -153,6 +153,108 @@ class ProfileMiddleware(BaseMiddleware):
 					# Do not consume credit now; wait for confirm
 					return None
 
+			# Direct list message flow intercept: if user.step like direct_list_{kind}_{page}, collect message for list sending
+			if getattr(user, "step", "").startswith("direct_list_"):
+				# Parse step to get kind and page (kind may contain underscores)
+				try:
+					rest = user.step[len("direct_list_"):]
+					kind, page_str = rest.rsplit("_", 1)
+					page = int(page_str)
+				except Exception:
+					kind = None
+					page = None
+				
+				if kind is not None and page is not None:
+					# If user pressed back, cancel and show /start
+					from src.context.keyboards.reply.special_contact import resolve_id_from_text as _resolve_special_back
+					if _resolve_special_back(text) == "special:back":
+						user.step = "start"
+						await session.commit()
+						name_display = None
+						if isinstance(event, Message) and event.from_user:
+							name_display = event.from_user.first_name or event.from_user.username
+						start_text = get_start_message(name_display)
+						kb0, _ = await build_keyboard_for(event.from_user.id if event.from_user else None)
+						await event.answer(
+							start_text,
+							reply_markup=kb0,
+							parse_mode="Markdown",
+							link_preview_options=LinkPreviewOptions(is_disabled=True),
+						)
+						return None
+					
+					# Create MessageData from current message exactly like single direct
+					from src.services.direct_draft_cache import MessageData as _Msg
+					message_data = _Msg(
+						text=event.text,
+						photo=event.photo,
+						video=event.video,
+						animation=event.animation,
+						audio=event.audio,
+						document=event.document,
+						sticker=event.sticker,
+						caption=event.caption,
+					)
+					# Build JSON content identical to single direct flow, but without target_id (list sending later)
+					json_message_data = {}
+					if message_data.text:
+						json_message_data = {"message": message_data.text, "type": "text"}
+					elif message_data.photo:
+						# Save media to cache channel (if configured) to obtain media_id
+						from src.services.cache import CacheService
+						cache_service = CacheService(event.bot)
+						media_id = await cache_service.save_media(message_data.photo[-1])
+						json_message_data = {"message": message_data.caption or "", "type": "image", "media_id": media_id}
+					elif message_data.video:
+						from src.services.cache import CacheService
+						cache_service = CacheService(event.bot)
+						media_id = await cache_service.save_media(message_data.video)
+						json_message_data = {"message": message_data.caption or "", "type": "video", "media_id": media_id}
+					elif message_data.animation:
+						from src.services.cache import CacheService
+						cache_service = CacheService(event.bot)
+						media_id = await cache_service.save_media(message_data.animation)
+						json_message_data = {"message": message_data.caption or "", "type": "animation", "media_id": media_id}
+					elif message_data.audio:
+						from src.services.cache import CacheService
+						cache_service = CacheService(event.bot)
+						media_id = await cache_service.save_media(message_data.audio)
+						json_message_data = {"message": message_data.caption or "", "type": "audio", "media_id": media_id}
+					elif message_data.document:
+						from src.services.cache import CacheService
+						cache_service = CacheService(event.bot)
+						media_id = await cache_service.save_media(message_data.document)
+						json_message_data = {"message": message_data.caption or "", "type": "document", "media_id": media_id}
+					elif message_data.sticker:
+						from src.services.cache import CacheService
+						cache_service = CacheService(event.bot)
+						media_id = await cache_service.save_media(message_data.sticker)
+						json_message_data = {"message": "", "type": "sticker", "media_id": media_id}
+					else:
+						await event.answer("❌ نوع پیام پشتیبانی نمی‌شود", show_alert=True)
+						return None
+					# Save the direct as a list draft entry per-user (temporary target_id = sender for now)
+					from src.databases.directs import Direct
+					# Persist a single row that represents the composed message for list send later
+					# We'll store target_id = user.id (sender) as placeholder; next phase will fan-out
+					from sqlalchemy import insert
+					await session.execute(
+						insert(Direct).values(user_id=user.id, target_id=user.id, content=json_message_data)
+					)
+					# Keep step as direct_list_{kind}_{page} (like single direct keeps direct_to_) until user confirms/cancels
+					await session.commit()
+					# Send list confirmation preview with confirm/cancel/edit keyboard
+					from src.context.messages.direct.list_confirm_preview import format_message as _list_preview
+					from src.context.keyboards.inline.direct_list_send_confirm import build_keyboard as _list_kb
+					try:
+						await event.answer(
+							_list_preview(kind, page),
+							reply_markup=_list_kb(kind, page)
+						)
+					except Exception:
+						await event.answer(_list_preview(kind, page))
+					return None
+
 			# If a command is sent while profile is not complete, block it
 			if text.startswith("/"):
 				incomplete = (

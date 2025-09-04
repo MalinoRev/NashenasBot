@@ -27,6 +27,21 @@ def build_keyboard(kind: str, page: int, gender: str | None = None, has_next: bo
 				parts.append(str(page_target))
 		return ":".join(parts)
 
+	def encode_direct(page_target: int) -> str:
+		# Keep a parallel encoding for the direct-send action so it carries the same context
+		parts: list[str] = ["direct_list", kind]
+		if kind == "nearby":
+			max_km = kwargs.get("max_km")
+			parts.extend([str(max_km), str(gender or "all"), str(page_target)])
+		elif kind == "by_location":
+			parts.extend([str(gender or "all"), str(page_target)])
+		else:
+			if gender is not None:
+				parts.extend([str(gender), str(page_target)])
+			else:
+				parts.append(str(page_target))
+		return ":".join(parts)
+
 	prev_page = page - 1
 	next_page = page + 1
 
@@ -34,7 +49,10 @@ def build_keyboard(kind: str, page: int, gender: str | None = None, has_next: bo
 		[
 			InlineKeyboardButton(text="صفحه بعدی ➡️", callback_data=encode(next_page)),
 			InlineKeyboardButton(text="⬅️ صفحه قبلی", callback_data=encode(prev_page)),
-		]
+		],
+		[
+			InlineKeyboardButton(text="ارسال دایرکت به لیست", callback_data=encode_direct(page)),
+		],
 	]
 	return InlineKeyboardMarkup(inline_keyboard=buttons)
 
