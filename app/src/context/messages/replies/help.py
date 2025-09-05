@@ -1,4 +1,4 @@
-import os
+import asyncio
 
 
 def get_message() -> str:
@@ -18,5 +18,16 @@ def get_message() -> str:
 		"🔸 - آموزش حذف پیام در چت /help_deleteMessage\n\n"
 		"🔸 - چگونه بصورت پیشرفته بین کاربران جستجو کنم ؟ /help_search\n\n"
 		"🔸 - چگونه اکانت ربات را حذف کنم ؟ /deleted_account\n\n"
-		f"👨‍💻 ارتباط با پشتیبانی ربات : @{os.getenv('BOT_SUPPORT_USERNAME','support')}"
+		f"👨‍💻 ارتباط با پشتیبانی ربات : @{_get_support()}"
 	)
+
+
+def _get_support() -> str:
+	async def _fetch():
+		from src.services.bot_settings_service import get_support_username
+		return await get_support_username()
+	try:
+		val = asyncio.get_event_loop().run_until_complete(_fetch())  # type: ignore[arg-type]
+		return val or 'support'
+	except Exception:
+		return 'support'

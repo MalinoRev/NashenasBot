@@ -31,6 +31,7 @@ import src.databases.directs  # noqa: F401
 import src.databases.chat_requests  # noqa: F401
 import src.databases.user_vips  # noqa: F401
 import src.databases.admins  # noqa: F401
+import src.databases.bot_settings  # noqa: F401
 
 
 Action = Literal["create", "drop", "recreate"]
@@ -84,6 +85,7 @@ async def seed_all() -> None:
 	)
 	from src.databases.seeds.rewards import seed_rewards_defaults
 	from src.databases.seeds.products import seed_products_defaults
+	from src.databases.seeds.bot_settings import seed_bot_settings_defaults
 
 	await seed_states()
 	await seed_cities_state_1()
@@ -119,6 +121,7 @@ async def seed_all() -> None:
 	await seed_cities_state_31()
 	await seed_rewards_defaults()
 	await seed_products_defaults()
+	await seed_bot_settings_defaults()
 
 
 def main() -> None:

@@ -588,6 +588,10 @@ async def handle_any_callback(callback: CallbackQuery) -> None:
 		from src.handlers.callbacks.pricing_management import handle_pricing_management
 		await handle_pricing_management(callback)
 		return
+	if data.startswith("bot_settings:"):
+		from src.handlers.callbacks.bot_settings import handle_bot_settings
+		await handle_bot_settings(callback)
+		return
 	await callback.answer()
 	await callback.message.answer("❌ در هنگام پردازش درخواست شما خطایی رخ داد ❌")
 

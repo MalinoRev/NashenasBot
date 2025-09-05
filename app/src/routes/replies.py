@@ -1430,8 +1430,14 @@ async def handle_text_reply(message: Message) -> None:
 			await show_support_management(message)
 			return
 
+		# Handle bot settings
+		if admin_id == "admin:bot_settings":
+			from src.handlers.callbacks.bot_settings_entry import show_bot_settings
+			await show_bot_settings(message)
+			return
+
 		# Handle other admin panel buttons (placeholder for now)
-		if admin_id in ["admin:statistics", "admin:user_management", "admin:chat_management", "admin:financial_management", "admin:reports_management", "admin:pricing_management", "admin:bot_settings", "admin:admin_management"]:
+		if admin_id in ["admin:statistics", "admin:user_management", "admin:chat_management", "admin:financial_management", "admin:reports_management", "admin:pricing_management", "admin:admin_management"]:
 			from src.context.messages.replies.admin_panel_buttons import get_development_message
 			await message.answer(get_development_message(admin_id))
 			return

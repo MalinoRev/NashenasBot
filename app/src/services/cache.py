@@ -17,7 +17,11 @@ class CacheService:
 
     def __init__(self, bot: Bot):
         self.bot = bot
-        self.cache_channel_id = int(os.getenv('CACHE_CHANNEL_ID', '0'))
+        # Load from DB bot settings instead of env
+        from src.services.bot_settings_service import get_cache_channel_id
+        # Note: can't await in __init__, so default to 0 and lazy-load on first use
+        self.cache_channel_id = 0
+        self._loaded = False
 
         # Ensure temp directory exists
         self.temp_dir = Path("temp")
@@ -83,10 +87,19 @@ class CacheService:
         Returns:
             media_id: Unique identifier for the cached media, or None if failed
         """
+        # Lazy load cache_channel_id
+        if not self._loaded:
+            try:
+                from src.services.bot_settings_service import get_cache_channel_id as _get
+                cid = await _get()
+                self.cache_channel_id = int(cid or 0)
+            except Exception:
+                self.cache_channel_id = 0
+            self._loaded = True
         print(f"DEBUG: CacheService.save_media called with cache_channel_id={self.cache_channel_id}")
 
         if not self.cache_channel_id or str(self.cache_channel_id) == '0':
-            print(f"ERROR: CACHE_CHANNEL_ID not set (value: '{os.getenv('CACHE_CHANNEL_ID', 'NOT_SET')}'), skipping media caching")
+            print(f"ERROR: CACHE_CHANNEL_ID not set in DB settings, skipping media caching")
             return None
 
         print(f"DEBUG: Media type: {type(media)}")
