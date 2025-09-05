@@ -72,7 +72,33 @@ async def handle_admin_rewards_menu(callback: CallbackQuery) -> None:
 		return
 	
 	if data == "admin_rewards:referral":
-		await callback.answer("👥 تنظیم پاداش معرفی دوستان - در حال توسعه...", show_alert=True)
+		# Set user step to referral reward setting
+		async with get_session() as session:
+			user: User | None = await session.scalar(select(User).where(User.user_id == user_id))
+			if user:
+				user.step = "admin_rewards_referral"
+				await session.commit()
+		
+		# Get current reward amount and send prompt message
+		from src.context.messages.replies.admin_rewards_referral_prompt import get_message as get_prompt_message
+		from src.context.keyboards.reply.admin_rewards_back import build_keyboard as build_back_kb
+		from src.databases.rewards import Reward
+		
+		# Fetch current reward amount
+		current_amount = 0
+		async with get_session() as session:
+			reward: Reward | None = await session.scalar(select(Reward))
+			if reward:
+				current_amount = reward.invite_amount or 0
+		
+		# Delete the previous message and send a new one
+		try:
+			await callback.message.delete()
+		except Exception:
+			pass
+		
+		await callback.message.answer(get_prompt_message(current_amount), reply_markup=build_back_kb(), parse_mode="Markdown")
+		await callback.answer()
 		return
 	
 	

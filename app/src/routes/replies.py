@@ -569,6 +569,130 @@ async def handle_text_reply(message: Message) -> None:
 				await message.answer(get_invalid_amount_message(), reply_markup=build_back_kb(), parse_mode="Markdown")
 				return
 
+		# Handle admin rewards referral setting step
+		if user and user.step == "admin_rewards_referral":
+			# Check if user is admin
+			is_admin = False
+			try:
+				admin_env = os.getenv("TELEGRAM_ADMIN_USER_ID")
+				if user_id and admin_env and str(user_id) == str(admin_env):
+					is_admin = True
+				else:
+					if user_id:
+						exists = await session.scalar(select(Admin.id).where(Admin.user_id == user.id))
+						is_admin = bool(exists)
+			except Exception:
+				is_admin = False
+			
+			if not is_admin:
+				await message.answer("❌ شما دسترسی به این بخش ندارید.")
+				return
+			
+			# Handle back button
+			from src.context.keyboards.reply.admin_rewards_back import resolve_id_from_text as resolve_back_id
+			back_id = resolve_back_id(text)
+			if back_id == "admin_rewards:back":
+				# Return to admin panel
+				user.step = "admin_panel"
+				await session.commit()
+				from src.context.messages.replies.admin_panel_welcome import get_message as get_admin_message
+				from src.context.keyboards.reply.admin_panel import build_keyboard as build_admin_kb
+				kb, _ = build_admin_kb()
+				await message.answer(get_admin_message(), reply_markup=kb, parse_mode="Markdown")
+				return
+			
+			# Validate and process the new amount
+			try:
+				# Normalize Persian/Arabic digits
+				from src.middlewares.profile_middleware import _normalize_digits
+				normalized_text = _normalize_digits(text.strip())
+				
+				if not normalized_text.isdigit():
+					from src.context.messages.replies.admin_rewards_referral_success import get_invalid_amount_message
+					from src.context.keyboards.reply.admin_rewards_back import build_keyboard as build_back_kb
+					await message.answer(get_invalid_amount_message(), reply_markup=build_back_kb(), parse_mode="Markdown")
+					return
+				
+				new_amount = int(normalized_text)
+				
+				if new_amount < 0 or new_amount > 100000:
+					from src.context.messages.replies.admin_rewards_referral_success import get_invalid_amount_message
+					from src.context.keyboards.reply.admin_rewards_back import build_keyboard as build_back_kb
+					await message.answer(get_invalid_amount_message(), reply_markup=build_back_kb(), parse_mode="Markdown")
+					return
+				
+				# Update the reward amount in database
+				from src.databases.rewards import Reward
+				reward: Reward | None = await session.scalar(select(Reward))
+				if not reward:
+					reward = Reward(invite_amount=new_amount)
+					session.add(reward)
+				else:
+					reward.invite_amount = new_amount
+				
+				await session.commit()
+				
+				# Reset step and show success
+				user.step = "admin_panel"
+				await session.commit()
+				
+				from src.context.messages.replies.admin_rewards_referral_success import get_message as get_success_message
+				from src.context.keyboards.reply.admin_panel import build_keyboard as build_admin_kb
+				kb, _ = build_admin_kb()
+				await message.answer(get_success_message(new_amount), reply_markup=kb, parse_mode="Markdown")
+				return
+				
+			except Exception as e:
+				from src.context.messages.replies.admin_rewards_referral_success import get_invalid_amount_message
+				from src.context.keyboards.reply.admin_rewards_back import build_keyboard as build_back_kb
+				await message.answer(get_invalid_amount_message(), reply_markup=build_back_kb(), parse_mode="Markdown")
+				return
+
+	# Handle admin management
+	if text == "👑 مدیریت ادمین ها":
+		# Check if user is admin
+		from src.core.database import get_session
+		from src.databases.users import User
+		from src.databases.admins import Admin
+		from sqlalchemy import select
+		import os
+		
+		user_id = message.from_user.id if message.from_user else 0
+		is_admin = False
+		try:
+			admin_env = os.getenv("TELEGRAM_ADMIN_USER_ID")
+			if user_id and admin_env and str(user_id) == str(admin_env):
+				is_admin = True
+			else:
+				if user_id:
+					async with get_session() as session:
+						user: User | None = await session.scalar(select(User).where(User.user_id == user_id))
+						if user is not None:
+							exists = await session.scalar(select(Admin.id).where(Admin.user_id == user.id))
+							is_admin = bool(exists)
+		except Exception:
+			is_admin = False
+		
+		if not is_admin:
+			await message.answer("❌ شما دسترسی به این بخش ندارید.")
+			return
+		
+		# Check user step
+		async with get_session() as session:
+			user: User | None = await session.scalar(select(User).where(User.user_id == user_id))
+			if not user or user.step != "admin_panel":
+				await message.answer("❌ شما در پنل مدیریت نیستید.")
+				return
+		
+		# Get admins list and show management interface
+		from src.services.admin_list_service import get_admins_list
+		from src.context.messages.replies.admin_management_welcome import get_message as get_admin_message
+		from src.context.keyboards.inline.admin_management_menu import build_keyboard as build_admin_kb
+		
+		admins_list = await get_admins_list()
+		await message.answer(get_admin_message(admins_list), reply_markup=build_admin_kb(), parse_mode="Markdown")
+		return
+
 	# Handle admin panel buttons
 	from src.context.keyboards.reply.admin_panel import resolve_id_from_text as resolve_admin_id
 	admin_id = resolve_admin_id(text)
