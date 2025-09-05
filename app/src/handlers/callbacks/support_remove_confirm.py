@@ -62,6 +62,19 @@ async def handle_support_remove_confirm(callback: CallbackQuery) -> None:
 			if user:
 				user.step = "admin_panel"
 				await session.commit()
+		# Notify removed supporter
+		from src.context.messages.notifications.supporter_removal import get_message as get_removal_message
+		from src.context.keyboards.reply.mainButtons import build_keyboard_for
+		try:
+			kb, _ = await build_keyboard_for(target_user_id)
+			await callback.bot.send_message(
+				chat_id=target_user.user_id,
+				text=get_removal_message(),
+				reply_markup=kb,
+				parse_mode="Markdown"
+			)
+		except Exception as e:
+			print(f"LOG: Failed to send supporter removal notification to {target_user.user_id}: {e}")
 		from src.services.supporter_list_service import get_supporters_list
 		from src.context.messages.replies.support_management_welcome import get_message as get_support_message
 		from src.context.keyboards.inline.support_management_menu import build_keyboard as build_support_kb

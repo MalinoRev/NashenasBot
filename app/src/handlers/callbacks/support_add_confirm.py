@@ -64,6 +64,16 @@ async def handle_support_add_confirm(callback: CallbackQuery) -> None:
 			if user:
 				user.step = "admin_panel"
 				await session.commit()
+		# Notify the new supporter
+		from src.context.messages.notifications.supporter_promotion import get_message as get_promotion_message
+		try:
+			await callback.bot.send_message(
+				chat_id=target_user.user_id,
+				text=get_promotion_message(),
+				parse_mode="Markdown"
+			)
+		except Exception as e:
+			print(f"LOG: Failed to send supporter notification to {target_user.user_id}: {e}")
 		from src.services.supporter_list_service import get_supporters_list
 		from src.context.messages.replies.support_management_welcome import get_message as get_support_message
 		from src.context.keyboards.inline.support_management_menu import build_keyboard as build_support_kb
