@@ -840,7 +840,7 @@ async def handle_text_reply(message: Message) -> None:
 		# Validate and update VIP price
 		try:
 			new_price = int(text.strip())
-			if 0 <= new_price <= 1000000:
+			if 5000 <= new_price <= 10000000:
 				from src.databases.products import Product
 				from sqlalchemy import select, update
 				product: Product | None = await session.scalar(select(Product))
@@ -882,7 +882,7 @@ async def handle_text_reply(message: Message) -> None:
 		# Validate and update VIP time
 		try:
 			new_time = int(text.strip())
-			if 1 <= new_time <= 365:
+			if 1 <= new_time <= 3650:
 				from src.databases.products import Product
 				from sqlalchemy import select, update
 				product: Product | None = await session.scalar(select(Product))
@@ -922,7 +922,7 @@ async def handle_text_reply(message: Message) -> None:
 		# Validate and update delete price
 		try:
 			new_price = int(text.strip())
-			if 0 <= new_price <= 1000000:
+			if 5000 <= new_price <= 10000000:
 				from src.databases.products import Product
 				from sqlalchemy import select, update
 				product: Product | None = await session.scalar(select(Product))
@@ -962,7 +962,7 @@ async def handle_text_reply(message: Message) -> None:
 		# Validate and update unban price
 		try:
 			new_price = int(text.strip())
-			if 0 <= new_price <= 1000000:
+			if 5000 <= new_price <= 10000000:
 				from src.databases.products import Product
 				from sqlalchemy import select, update
 				product: Product | None = await session.scalar(select(Product))
