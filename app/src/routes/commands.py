@@ -417,6 +417,11 @@ async def panel_exit_command(message: Message) -> None:
 	from src.databases.admins import Admin
 	from sqlalchemy import select
 	import os
+	from src.context.messages.commands.panel_exit import (
+		get_message as get_exit_message,
+		get_access_denied_message,
+		get_not_in_panel_message
+	)
 
 	user_id = message.from_user.id if message.from_user else 0
 	# Check if user is admin
@@ -436,14 +441,14 @@ async def panel_exit_command(message: Message) -> None:
 		is_admin = False
 	
 	if not is_admin:
-		await message.answer("❌ شما دسترسی به این دستور ندارید.")
+		await message.answer(get_access_denied_message())
 		return
 
 	# Check user step
 	async with get_session() as session:
 		user: User | None = await session.scalar(select(User).where(User.user_id == user_id))
 		if not user or user.step != "admin_panel":
-			await message.answer("❌ شما در پنل مدیریت نیستید.")
+			await message.answer(get_not_in_panel_message())
 			return
 		
 		# Exit admin panel - reset step to start
@@ -456,7 +461,7 @@ async def panel_exit_command(message: Message) -> None:
 	kb, _ = await build_keyboard_for(user_id)
 	name = message.from_user.first_name if message.from_user else None
 	start_text = get_start_message(name)
-	await message.answer("✅ از پنل مدیریت خارج شدید.", reply_markup=kb, parse_mode="Markdown", link_preview_options=LinkPreviewOptions(is_disabled=True))
+	await message.answer(get_exit_message(), reply_markup=kb, parse_mode="Markdown", link_preview_options=LinkPreviewOptions(is_disabled=True))
 	return
 
 

@@ -509,7 +509,8 @@ async def handle_text_reply(message: Message) -> None:
 			is_admin = False
 		
 		if not is_admin:
-			await message.answer("❌ شما دسترسی به پنل مدیریت ندارید.")
+			from src.context.messages.replies.admin_panel_buttons import get_access_denied_message
+			await message.answer(get_access_denied_message())
 			return
 
 		# Check user step
@@ -530,15 +531,17 @@ async def handle_text_reply(message: Message) -> None:
 			# Send main keyboard
 			from src.context.keyboards.reply.mainButtons import build_keyboard_for
 			from src.context.messages.commands.start import get_message as get_start_message
+			from src.context.messages.commands.panel_exit import get_message as get_exit_message
 			kb, _ = await build_keyboard_for(user_id)
 			name = message.from_user.first_name if message.from_user else None
 			start_text = get_start_message(name)
-			await message.answer("✅ از پنل مدیریت خارج شدید.", reply_markup=kb, parse_mode="Markdown", link_preview_options=LinkPreviewOptions(is_disabled=True))
+			await message.answer(get_exit_message(), reply_markup=kb, parse_mode="Markdown", link_preview_options=LinkPreviewOptions(is_disabled=True))
 			return
 		
 		# Handle other admin panel buttons (placeholder for now)
 		if admin_id in ["admin:user_management", "admin:chat_management", "admin:financial_management", "admin:reports_management", "admin:pricing_management", "admin:bot_settings"]:
-			await message.answer(f"🔧 بخش {admin_id} در حال توسعه است...")
+			from src.context.messages.replies.admin_panel_buttons import get_development_message
+			await message.answer(get_development_message(admin_id))
 			return
 
 	await message.answer("🔸 متوجه نشدم چی میخوای 🙃\n\nاگر نیاز به کمک داری دستور /help رو بفرست")
