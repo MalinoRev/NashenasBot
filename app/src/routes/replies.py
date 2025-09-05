@@ -571,21 +571,17 @@ async def handle_text_reply(message: Message) -> None:
 
 		# Handle admin remove step
 		if user and user.step == "admin_remove":
-			# Check if user is admin
-			is_admin = False
+			# Check if user is super admin
+			is_super_admin = False
 			try:
 				admin_env = os.getenv("TELEGRAM_ADMIN_USER_ID")
 				if user_id and admin_env and str(user_id) == str(admin_env):
-					is_admin = True
-				else:
-					if user_id:
-						exists = await session.scalar(select(Admin.id).where(Admin.user_id == user.id))
-						is_admin = bool(exists)
+					is_super_admin = True
 			except Exception:
-				is_admin = False
+				is_super_admin = False
 			
-			if not is_admin:
-				await message.answer("❌ شما دسترسی به این بخش ندارید.")
+			if not is_super_admin:
+				await message.answer("❌ فقط سوپر ادمین‌ها می‌توانند ادمین‌ها را مدیریت کنند.")
 				return
 			
 			# Handle back button
@@ -654,21 +650,17 @@ async def handle_text_reply(message: Message) -> None:
 
 		# Handle admin add step
 		if user and user.step == "admin_add":
-			# Check if user is admin
-			is_admin = False
+			# Check if user is super admin
+			is_super_admin = False
 			try:
 				admin_env = os.getenv("TELEGRAM_ADMIN_USER_ID")
 				if user_id and admin_env and str(user_id) == str(admin_env):
-					is_admin = True
-				else:
-					if user_id:
-						exists = await session.scalar(select(Admin.id).where(Admin.user_id == user.id))
-						is_admin = bool(exists)
+					is_super_admin = True
 			except Exception:
-				is_admin = False
+				is_super_admin = False
 			
-			if not is_admin:
-				await message.answer("❌ شما دسترسی به این بخش ندارید.")
+			if not is_super_admin:
+				await message.answer("❌ فقط سوپر ادمین‌ها می‌توانند ادمین‌ها را مدیریت کنند.")
 				return
 			
 			# Handle back button
@@ -829,31 +821,23 @@ async def handle_text_reply(message: Message) -> None:
 
 	# Handle admin management
 	if text == "👑 مدیریت ادمین ها":
-		# Check if user is admin
+		# Check if user is super admin (only super admins can manage admins)
 		from src.core.database import get_session
 		from src.databases.users import User
-		from src.databases.admins import Admin
 		from sqlalchemy import select
 		import os
 		
 		user_id = message.from_user.id if message.from_user else 0
-		is_admin = False
+		is_super_admin = False
 		try:
 			admin_env = os.getenv("TELEGRAM_ADMIN_USER_ID")
 			if user_id and admin_env and str(user_id) == str(admin_env):
-				is_admin = True
-			else:
-				if user_id:
-					async with get_session() as session:
-						user: User | None = await session.scalar(select(User).where(User.user_id == user_id))
-						if user is not None:
-							exists = await session.scalar(select(Admin.id).where(Admin.user_id == user.id))
-							is_admin = bool(exists)
+				is_super_admin = True
 		except Exception:
-			is_admin = False
+			is_super_admin = False
 		
-		if not is_admin:
-			await message.answer("❌ شما دسترسی به این بخش ندارید.")
+		if not is_super_admin:
+			await message.answer("❌ فقط سوپر ادمین‌ها می‌توانند ادمین‌ها را مدیریت کنند.")
 			return
 		
 		# Check user step

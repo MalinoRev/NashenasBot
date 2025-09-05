@@ -13,24 +13,17 @@ async def handle_admin_add_confirm(callback: CallbackQuery) -> None:
 		return
 	
 	user_id = callback.from_user.id if callback.from_user else 0
-	# Check if user is admin
-	is_admin = False
+	# Check if user is super admin (only super admins can manage admins)
+	is_super_admin = False
 	try:
 		admin_env = os.getenv("TELEGRAM_ADMIN_USER_ID")
 		if user_id and admin_env and str(user_id) == str(admin_env):
-			is_admin = True
-		else:
-			if user_id:
-				async with get_session() as session:
-					user: User | None = await session.scalar(select(User).where(User.user_id == user_id))
-					if user is not None:
-						exists = await session.scalar(select(Admin.id).where(Admin.user_id == user.id))
-						is_admin = bool(exists)
+			is_super_admin = True
 	except Exception:
-		is_admin = False
+		is_super_admin = False
 	
-	if not is_admin:
-		await callback.answer("❌ شما دسترسی به این بخش ندارید.", show_alert=True)
+	if not is_super_admin:
+		await callback.answer("❌ فقط سوپر ادمین‌ها می‌توانند ادمین‌ها را مدیریت کنند.", show_alert=True)
 		return
 	
 	# Handle different confirmation options
