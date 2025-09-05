@@ -46,19 +46,15 @@ async def handle_admin_add_confirm(callback: CallbackQuery) -> None:
 		user.step = "admin_panel"
 		await session.commit()
 		
-		from src.services.admin_list_service import get_admins_list
-		from src.context.messages.replies.admin_management_welcome import get_message as get_admin_message
-		from src.context.keyboards.inline.admin_management_menu import build_keyboard as build_admin_kb
-		
-		# Delete the previous message and send a new one
+		# Edit the message to show cancellation
+		from src.context.messages.replies.admin_add_success import get_cancelled_message
+		cancelled_message = get_cancelled_message()
 		try:
-			await callback.message.delete()
+			await callback.message.edit_text(cancelled_message, reply_markup=None)
 		except Exception:
-			pass
+			await callback.message.answer(cancelled_message)
 		
-		admins_list = await get_admins_list()
-		await callback.message.answer(get_admin_message(admins_list), reply_markup=build_admin_kb(), parse_mode="Markdown")
-		await callback.answer("❌ عملیات لغو شد.")
+		await callback.answer(cancelled_message)
 		return
 	
 	if data.startswith("admin_add_confirm:yes:"):
@@ -82,6 +78,19 @@ async def handle_admin_add_confirm(callback: CallbackQuery) -> None:
 		session.add(new_admin)
 		await session.commit()
 		
+		# Send notification to the new admin
+		from aiogram import Bot
+		from src.context.messages.notifications.admin_promotion import get_message as get_notification_message
+		bot = Bot.get_current()
+		try:
+			await bot.send_message(
+				chat_id=target_user.user_id,
+				text=get_notification_message(),
+				parse_mode="Markdown"
+			)
+		except Exception as e:
+			print(f"LOG: Failed to send admin notification to {target_user.user_id}: {e}")
+		
 		# Reset step and show success
 		user.step = "admin_panel"
 		await session.commit()
@@ -98,9 +107,12 @@ async def handle_admin_add_confirm(callback: CallbackQuery) -> None:
 		
 		admins_list = await get_admins_list()
 		user_name = target_user.tg_name or 'نام نامشخص'
-		await callback.message.answer(f"✅ کاربر {user_name} با موفقیت به عنوان ادمین اضافه شد.", parse_mode="Markdown")
+		from src.context.messages.replies.admin_add_success import get_success_message
+		success_message = get_success_message(user_name)
+		await callback.message.answer(success_message, parse_mode="Markdown")
 		await callback.message.answer(get_admin_message(admins_list), reply_markup=build_admin_kb(), parse_mode="Markdown")
-		await callback.answer("✅ ادمین با موفقیت اضافه شد!")
+		from src.context.messages.replies.admin_add_success import get_success_alert
+		await callback.answer(get_success_alert())
 		return
 	
 	await callback.answer()
