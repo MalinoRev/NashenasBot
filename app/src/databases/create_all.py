@@ -21,6 +21,7 @@ from . import prices as _prices  # noqa: F401
 from . import requested_channels as _requested_channels  # noqa: F401
 from . import rewards as _rewards  # noqa: F401
 from . import states as _states  # noqa: F401
+from . import supporters as _supporters  # noqa: F401
 from . import user_bans as _user_bans  # noqa: F401
 from . import user_blocked as _user_blocked  # noqa: F401
 from . import user_filters as _user_filters  # noqa: F401

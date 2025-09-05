@@ -1,5 +1,5 @@
 from sqlalchemy import BigInteger, DateTime, ForeignKey, Integer, String, text, Boolean
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.core.database import Base
 
@@ -25,5 +25,8 @@ class User(Base):
 	step: Mapped[str | None] = mapped_column(String(255), nullable=False)
 	created_at: Mapped[DateTime] = mapped_column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
 	can_get_likes: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="1")
+
+	# Relationships
+	supporters: Mapped[list["Supporter"]] = relationship("Supporter", back_populates="user")
 
 

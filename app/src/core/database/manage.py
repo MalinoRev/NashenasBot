@@ -6,6 +6,7 @@ from . import Base, engine
 
 # Import models so they register on Base.metadata
 import src.databases.states  # noqa: F401
+import src.databases.supporters  # noqa: F401
 import src.databases.users  # noqa: F401
 import src.databases.cities  # noqa: F401
 import src.databases.user_profiles  # noqa: F401
