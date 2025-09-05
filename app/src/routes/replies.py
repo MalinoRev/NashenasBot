@@ -1026,6 +1026,142 @@ async def handle_text_reply(message: Message) -> None:
 		if not is_admin:
 			await message.answer("❌ شما دسترسی به این بخش ندارید.")
 			return
+
+		# Handle support add step
+		if user and user.step == "support_add":
+			# Super admin only
+			is_super_admin = False
+			try:
+				admin_env = os.getenv("TELEGRAM_ADMIN_USER_ID")
+				if user_id and admin_env and str(user_id) == str(admin_env):
+					is_super_admin = True
+			except Exception:
+				is_super_admin = False
+			if not is_super_admin:
+				await message.answer("❌ فقط سوپر ادمین‌ها می‌توانند پشتیبان‌ها را مدیریت کنند.")
+				return
+
+			# Handle back
+			from src.context.keyboards.reply.admin_rewards_back import resolve_id_from_text as resolve_back_id
+			back_id = resolve_back_id(text)
+			if back_id == "admin_rewards:back":
+				user.step = "admin_panel"
+				await session.commit()
+				from src.context.messages.replies.admin_panel_welcome import get_message as get_admin_panel_message
+				from src.context.keyboards.reply.admin_panel import build_keyboard as build_admin_panel_kb
+				kb, _ = build_admin_panel_kb()
+				await message.answer(get_admin_panel_message(), reply_markup=kb, parse_mode="Markdown")
+				return
+
+			# Validate and process ID
+			try:
+				from src.middlewares.profile_middleware import _normalize_digits
+				normalized_text = _normalize_digits(text.strip())
+				if not normalized_text.isdigit():
+					from src.context.messages.replies.support_add_confirm import get_user_not_found_message
+					from src.context.keyboards.reply.admin_rewards_back import build_keyboard as build_back_kb
+					await message.answer(get_user_not_found_message(), reply_markup=build_back_kb(), parse_mode="Markdown")
+					return
+				target_user_id = int(normalized_text)
+				from sqlalchemy import select
+				target_user: User | None = await session.scalar(select(User).where(User.user_id == target_user_id))
+				if not target_user:
+					from src.context.messages.replies.support_add_confirm import get_user_not_found_message
+					from src.context.keyboards.reply.admin_rewards_back import build_keyboard as build_back_kb
+					await message.answer(get_user_not_found_message(), reply_markup=build_back_kb(), parse_mode="Markdown")
+					return
+				from src.databases.supporters import Supporter
+				existing = await session.scalar(select(Supporter.id).where(Supporter.user_id == target_user.id))
+				if existing:
+					from src.context.messages.replies.support_add_confirm import get_already_support_message
+					from src.context.keyboards.reply.admin_rewards_back import build_keyboard as build_back_kb
+					await message.answer(get_already_support_message(), reply_markup=build_back_kb(), parse_mode="Markdown")
+					return
+				# processing and reset step
+				user.step = "admin_panel"
+				await session.commit()
+				from src.context.keyboards.reply.admin_panel import build_keyboard as build_admin_panel_kb
+				kb, _ = build_admin_panel_kb()
+				await message.answer("⏳ در حال پردازش...", reply_markup=kb)
+				# confirmation
+				from src.context.messages.replies.support_add_confirm import get_message as get_confirm_message
+				from src.context.keyboards.inline.support_add_confirm import build_keyboard as build_confirm_kb
+				user_name = target_user.tg_name or 'نام نامشخص'
+				await message.answer(get_confirm_message(user_name, target_user_id), reply_markup=build_confirm_kb(target_user_id), parse_mode="Markdown")
+				return
+			except Exception:
+				from src.context.messages.replies.support_add_confirm import get_user_not_found_message
+				from src.context.keyboards.reply.admin_rewards_back import build_keyboard as build_back_kb
+				await message.answer(get_user_not_found_message(), reply_markup=build_back_kb(), parse_mode="Markdown")
+				return
+
+		# Handle support remove step
+		if user and user.step == "support_remove":
+			# Super admin only
+			is_super_admin = False
+			try:
+				admin_env = os.getenv("TELEGRAM_ADMIN_USER_ID")
+				if user_id and admin_env and str(user_id) == str(admin_env):
+					is_super_admin = True
+			except Exception:
+				is_super_admin = False
+			if not is_super_admin:
+				await message.answer("❌ فقط سوپر ادمین‌ها می‌توانند پشتیبان‌ها را مدیریت کنند.")
+				return
+
+			# Handle back
+			from src.context.keyboards.reply.admin_rewards_back import resolve_id_from_text as resolve_back_id
+			back_id = resolve_back_id(text)
+			if back_id == "admin_rewards:back":
+				user.step = "admin_panel"
+				await session.commit()
+				from src.context.messages.replies.admin_panel_welcome import get_message as get_admin_panel_message
+				from src.context.keyboards.reply.admin_panel import build_keyboard as build_admin_panel_kb
+				kb, _ = build_admin_panel_kb()
+				await message.answer(get_admin_panel_message(), reply_markup=kb, parse_mode="Markdown")
+				return
+
+			# Validate and process ID
+			try:
+				from src.middlewares.profile_middleware import _normalize_digits
+				normalized_text = _normalize_digits(text.strip())
+				if not normalized_text.isdigit():
+					from src.context.messages.replies.support_remove_confirm import get_user_not_found_message
+					from src.context.keyboards.reply.admin_rewards_back import build_keyboard as build_back_kb
+					await message.answer(get_user_not_found_message(), reply_markup=build_back_kb(), parse_mode="Markdown")
+					return
+				target_user_id = int(normalized_text)
+				from sqlalchemy import select
+				target_user: User | None = await session.scalar(select(User).where(User.user_id == target_user_id))
+				if not target_user:
+					from src.context.messages.replies.support_remove_confirm import get_user_not_found_message
+					from src.context.keyboards.reply.admin_rewards_back import build_keyboard as build_back_kb
+					await message.answer(get_user_not_found_message(), reply_markup=build_back_kb(), parse_mode="Markdown")
+					return
+				from src.databases.supporters import Supporter
+				existing = await session.scalar(select(Supporter.id).where(Supporter.user_id == target_user.id))
+				if not existing:
+					from src.context.messages.replies.support_remove_confirm import get_not_support_message
+					from src.context.keyboards.reply.admin_rewards_back import build_keyboard as build_back_kb
+					await message.answer(get_not_support_message(), reply_markup=build_back_kb(), parse_mode="Markdown")
+					return
+				# processing and reset step
+				user.step = "admin_panel"
+				await session.commit()
+				from src.context.keyboards.reply.admin_panel import build_keyboard as build_admin_panel_kb
+				kb, _ = build_admin_panel_kb()
+				await message.answer("⏳ در حال پردازش...", reply_markup=kb)
+				# confirmation
+				from src.context.messages.replies.support_remove_confirm import get_message as get_confirm_message
+				from src.context.keyboards.inline.support_remove_confirm import build_keyboard as build_confirm_kb
+				user_name = target_user.tg_name or 'نام نامشخص'
+				await message.answer(get_confirm_message(user_name, target_user_id), reply_markup=build_confirm_kb(target_user_id), parse_mode="Markdown")
+				return
+			except Exception:
+				from src.context.messages.replies.support_remove_confirm import get_user_not_found_message
+				from src.context.keyboards.reply.admin_rewards_back import build_keyboard as build_back_kb
+				await message.answer(get_user_not_found_message(), reply_markup=build_back_kb(), parse_mode="Markdown")
+				return
 		
 		# Check user step
 		async with get_session() as session:
@@ -1052,6 +1188,103 @@ async def handle_text_reply(message: Message) -> None:
 			parse_mode="HTML",
 		)
 		return
+
+	# Early handle supporter steps (numeric input) regardless of admin panel buttons
+	try:
+		from src.core.database import get_session
+		from src.databases.users import User
+		from sqlalchemy import select
+		user_id = message.from_user.id if message.from_user else 0
+		async with get_session() as session:
+			user: User | None = await session.scalar(select(User).where(User.user_id == user_id))
+			if user and user.step in ("support_add", "support_remove"):
+				# Super admin gate
+				import os
+				is_super_admin = False
+				try:
+					admin_env = os.getenv("TELEGRAM_ADMIN_USER_ID")
+					if user_id and admin_env and str(user_id) == str(admin_env):
+						is_super_admin = True
+				except Exception:
+					is_super_admin = False
+				if not is_super_admin:
+					await message.answer("❌ فقط سوپر ادمین‌ها می‌توانند پشتیبان‌ها را مدیریت کنند.")
+					return
+
+				# Back button
+				from src.context.keyboards.reply.admin_rewards_back import resolve_id_from_text as resolve_back_id
+				back_id = resolve_back_id(text)
+				if back_id == "admin_rewards:back":
+					user.step = "admin_panel"
+					await session.commit()
+					from src.context.messages.replies.admin_panel_welcome import get_message as get_admin_panel_message
+					from src.context.keyboards.reply.admin_panel import build_keyboard as build_admin_panel_kb
+					kb, _ = build_admin_panel_kb()
+					await message.answer(get_admin_panel_message(), reply_markup=kb, parse_mode="Markdown")
+					return
+
+				# Validate numeric id
+				from src.middlewares.profile_middleware import _normalize_digits
+				normalized_text = _normalize_digits(text.strip())
+				if not normalized_text.isdigit():
+					if user.step == "support_add":
+						from src.context.messages.replies.support_add_confirm import get_user_not_found_message
+					else:
+						from src.context.messages.replies.support_remove_confirm import get_user_not_found_message
+					from src.context.keyboards.reply.admin_rewards_back import build_keyboard as build_back_kb
+					await message.answer(get_user_not_found_message(), reply_markup=build_back_kb(), parse_mode="Markdown")
+					return
+
+				# Keep current step before resetting later
+				current_step = user.step
+				target_user_id = int(normalized_text)
+				target_user: User | None = await session.scalar(select(User).where(User.user_id == target_user_id))
+				if not target_user:
+					if user.step == "support_add":
+						from src.context.messages.replies.support_add_confirm import get_user_not_found_message
+					else:
+						from src.context.messages.replies.support_remove_confirm import get_user_not_found_message
+					from src.context.keyboards.reply.admin_rewards_back import build_keyboard as build_back_kb
+					await message.answer(get_user_not_found_message(), reply_markup=build_back_kb(), parse_mode="Markdown")
+					return
+
+				from src.databases.supporters import Supporter
+				if user.step == "support_add":
+					existing = await session.scalar(select(Supporter.id).where(Supporter.user_id == target_user.id))
+					if existing:
+						from src.context.messages.replies.support_add_confirm import get_already_support_message
+						from src.context.keyboards.reply.admin_rewards_back import build_keyboard as build_back_kb
+						await message.answer(get_already_support_message(), reply_markup=build_back_kb(), parse_mode="Markdown")
+						return
+				else:
+					existing = await session.scalar(select(Supporter.id).where(Supporter.user_id == target_user.id))
+					if not existing:
+						from src.context.messages.replies.support_remove_confirm import get_not_support_message
+						from src.context.keyboards.reply.admin_rewards_back import build_keyboard as build_back_kb
+						await message.answer(get_not_support_message(), reply_markup=build_back_kb(), parse_mode="Markdown")
+						return
+
+				# Reset to admin_panel and show processing
+				user.step = "admin_panel"
+				await session.commit()
+				from src.context.keyboards.reply.admin_panel import build_keyboard as build_admin_panel_kb
+				kb, _ = build_admin_panel_kb()
+				await message.answer("⏳ در حال پردازش...", reply_markup=kb)
+
+				# Show confirmation inline based on original step
+				user_name = target_user.tg_name or 'نام نامشخص'
+				if current_step == "support_add":
+					from src.context.messages.replies.support_add_confirm import get_message as get_confirm_message
+					from src.context.keyboards.inline.support_add_confirm import build_keyboard as build_confirm_kb
+					await message.answer(get_confirm_message(user_name, target_user_id), reply_markup=build_confirm_kb(target_user_id), parse_mode="Markdown")
+					return
+				else:
+					from src.context.messages.replies.support_remove_confirm import get_message as get_confirm_message
+					from src.context.keyboards.inline.support_remove_confirm import build_keyboard as build_confirm_kb
+					await message.answer(get_confirm_message(user_name, target_user_id), reply_markup=build_confirm_kb(target_user_id), parse_mode="Markdown")
+					return
+	except Exception:
+		pass
 
 	# Handle admin management
 	if text == "👑 مدیریت ادمین ها":
@@ -1088,6 +1321,43 @@ async def handle_text_reply(message: Message) -> None:
 		
 		admins_list = await get_admins_list()
 		await message.answer(get_admin_message(admins_list), reply_markup=build_admin_kb(), parse_mode="Markdown")
+		return
+
+	# Handle support management
+	if text == "🛟 مدیریت پشتیبان ها":
+		# Check if user is super admin
+		from src.core.database import get_session
+		from src.databases.users import User
+		from sqlalchemy import select
+		import os
+
+		user_id = message.from_user.id if message.from_user else 0
+		is_super_admin = False
+		try:
+			admin_env = os.getenv("TELEGRAM_ADMIN_USER_ID")
+			if user_id and admin_env and str(user_id) == str(admin_env):
+				is_super_admin = True
+		except Exception:
+			is_super_admin = False
+
+		if not is_super_admin:
+			await message.answer("❌ فقط سوپر ادمین‌ها می‌توانند پشتیبان‌ها را مدیریت کنند.")
+			return
+
+		# Check user step
+		async with get_session() as session:
+			user: User | None = await session.scalar(select(User).where(User.user_id == user_id))
+			if not user or user.step != "admin_panel":
+				await message.answer("❌ شما در پنل مدیریت نیستید.")
+				return
+
+		# Get supporters list and show management interface
+		from src.services.supporter_list_service import get_supporters_list
+		from src.context.messages.replies.support_management_welcome import get_message as get_support_message
+		from src.context.keyboards.inline.support_management_menu import build_keyboard as build_support_kb
+
+		supporters_list = await get_supporters_list()
+		await message.answer(get_support_message(supporters_list), reply_markup=build_support_kb(), parse_mode="Markdown")
 		return
 
 	# Handle admin panel buttons
@@ -1154,8 +1424,14 @@ async def handle_text_reply(message: Message) -> None:
 			await message.answer(get_rewards_message(), reply_markup=build_rewards_kb(), parse_mode="Markdown")
 			return
 		
+		# Handle support management direct entry
+		if admin_id == "admin:support_management":
+			from src.handlers.callbacks.support_management_entry import show_support_management
+			await show_support_management(message)
+			return
+
 		# Handle other admin panel buttons (placeholder for now)
-		if admin_id in ["admin:statistics", "admin:user_management", "admin:chat_management", "admin:financial_management", "admin:reports_management", "admin:pricing_management", "admin:bot_settings", "admin:admin_management", "admin:support_management"]:
+		if admin_id in ["admin:statistics", "admin:user_management", "admin:chat_management", "admin:financial_management", "admin:reports_management", "admin:pricing_management", "admin:bot_settings", "admin:admin_management"]:
 			from src.context.messages.replies.admin_panel_buttons import get_development_message
 			await message.answer(get_development_message(admin_id))
 			return

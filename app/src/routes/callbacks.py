@@ -564,6 +564,10 @@ async def handle_any_callback(callback: CallbackQuery) -> None:
 		from src.handlers.callbacks.admin_management import handle_admin_management
 		await handle_admin_management(callback)
 		return
+	if data.startswith("support_management:"):
+		from src.handlers.callbacks.support_management import handle_support_management
+		await handle_support_management(callback)
+		return
 	if data.startswith("admin_add_confirm:"):
 		from src.handlers.callbacks.admin_add_confirm import handle_admin_add_confirm
 		await handle_admin_add_confirm(callback)
@@ -571,6 +575,14 @@ async def handle_any_callback(callback: CallbackQuery) -> None:
 	if data.startswith("admin_remove_confirm:"):
 		from src.handlers.callbacks.admin_remove_confirm import handle_admin_remove_confirm
 		await handle_admin_remove_confirm(callback)
+		return
+	if data.startswith("support_add_confirm:"):
+		from src.handlers.callbacks.support_add_confirm import handle_support_add_confirm
+		await handle_support_add_confirm(callback)
+		return
+	if data.startswith("support_remove_confirm:"):
+		from src.handlers.callbacks.support_remove_confirm import handle_support_remove_confirm
+		await handle_support_remove_confirm(callback)
 		return
 	if data.startswith("pricing:"):
 		from src.handlers.callbacks.pricing_management import handle_pricing_management

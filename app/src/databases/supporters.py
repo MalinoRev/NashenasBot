@@ -1,5 +1,5 @@
 from sqlalchemy import BigInteger, ForeignKey
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column
 
 from src.core.database import Base
 
@@ -15,5 +15,4 @@ class Supporter(Base):
 	id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
 	user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), nullable=False)
 
-	# Relationship
-	user: Mapped["User"] = relationship("User", back_populates="supporters")
+	# Note: Relationship is intentionally omitted to avoid import timing issues
