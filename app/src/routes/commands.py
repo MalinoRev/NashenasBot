@@ -409,6 +409,57 @@ async def test_regex_command(message: Message) -> None:
 	return
 
 
+# /panel_exit -> exit admin panel (admin only)
+@router.message(Command("panel_exit"))
+async def panel_exit_command(message: Message) -> None:
+	from src.core.database import get_session
+	from src.databases.users import User
+	from src.databases.admins import Admin
+	from sqlalchemy import select
+	import os
+
+	user_id = message.from_user.id if message.from_user else 0
+	# Check if user is admin
+	is_admin = False
+	try:
+		admin_env = os.getenv("TELEGRAM_ADMIN_USER_ID")
+		if user_id and admin_env and str(user_id) == str(admin_env):
+			is_admin = True
+		else:
+			if user_id:
+				async with get_session() as session:
+					user: User | None = await session.scalar(select(User).where(User.user_id == user_id))
+					if user is not None:
+						exists = await session.scalar(select(Admin.id).where(Admin.user_id == user.id))
+						is_admin = bool(exists)
+	except Exception:
+		is_admin = False
+	
+	if not is_admin:
+		await message.answer("❌ شما دسترسی به این دستور ندارید.")
+		return
+
+	# Check user step
+	async with get_session() as session:
+		user: User | None = await session.scalar(select(User).where(User.user_id == user_id))
+		if not user or user.step != "admin_panel":
+			await message.answer("❌ شما در پنل مدیریت نیستید.")
+			return
+		
+		# Exit admin panel - reset step to start
+		user.step = "start"
+		await session.commit()
+	
+	# Send main keyboard
+	from src.context.keyboards.reply.mainButtons import build_keyboard_for
+	from src.context.messages.commands.start import get_message as get_start_message
+	kb, _ = await build_keyboard_for(user_id)
+	name = message.from_user.first_name if message.from_user else None
+	start_text = get_start_message(name)
+	await message.answer("✅ از پنل مدیریت خارج شدید.", reply_markup=kb, parse_mode="Markdown", link_preview_options=LinkPreviewOptions(is_disabled=True))
+	return
+
+
 # Optional: catch-all for any other command (text starting with "/")
 @router.message(F.text.startswith("/"))
 async def unknown_command(message: Message) -> None:

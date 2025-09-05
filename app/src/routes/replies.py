@@ -442,6 +442,105 @@ async def handle_text_reply(message: Message) -> None:
 		await message.answer(result.get("text", ""), reply_markup=result.get("reply_markup"))
 		return
 
+	if main_id == "admin:panel":
+		from src.handlers.replies.admin_panel import handle_admin_panel
+		from src.core.database import get_session
+		from src.databases.users import User
+		from src.databases.admins import Admin
+		from sqlalchemy import select
+		import os
+
+		user_id = message.from_user.id if message.from_user else 0
+		# Check if user is admin
+		is_admin = False
+		try:
+			admin_env = os.getenv("TELEGRAM_ADMIN_USER_ID")
+			if user_id and admin_env and str(user_id) == str(admin_env):
+				is_admin = True
+			else:
+				if user_id:
+					async with get_session() as session:
+						user: User | None = await session.scalar(select(User).where(User.user_id == user_id))
+						if user is not None:
+							exists = await session.scalar(select(Admin.id).where(Admin.user_id == user.id))
+							is_admin = bool(exists)
+		except Exception:
+			is_admin = False
+		
+		if not is_admin:
+			await message.answer("❌ شما دسترسی به پنل مدیریت ندارید.")
+			return
+
+		# Check user step before calling handler
+		async with get_session() as session:
+			user: User | None = await session.scalar(select(User).where(User.user_id == user_id))
+			if not user or user.step != "start":
+				return
+
+		result = await handle_admin_panel(user_id)
+		await message.answer(result.get("text", ""), reply_markup=result.get("reply_markup"), parse_mode="Markdown")
+		return
+
+	# Handle admin panel buttons
+	from src.context.keyboards.reply.admin_panel import resolve_id_from_text as resolve_admin_id
+	admin_id = resolve_admin_id(text)
+	if admin_id:
+		from src.core.database import get_session
+		from src.databases.users import User
+		from src.databases.admins import Admin
+		from sqlalchemy import select
+		import os
+
+		user_id = message.from_user.id if message.from_user else 0
+		# Check if user is admin
+		is_admin = False
+		try:
+			admin_env = os.getenv("TELEGRAM_ADMIN_USER_ID")
+			if user_id and admin_env and str(user_id) == str(admin_env):
+				is_admin = True
+			else:
+				if user_id:
+					async with get_session() as session:
+						user: User | None = await session.scalar(select(User).where(User.user_id == user_id))
+						if user is not None:
+							exists = await session.scalar(select(Admin.id).where(Admin.user_id == user.id))
+							is_admin = bool(exists)
+		except Exception:
+			is_admin = False
+		
+		if not is_admin:
+			await message.answer("❌ شما دسترسی به پنل مدیریت ندارید.")
+			return
+
+		# Check user step
+		async with get_session() as session:
+			user: User | None = await session.scalar(select(User).where(User.user_id == user_id))
+			if not user or user.step != "admin_panel":
+				return
+
+		# Handle admin panel buttons
+		if admin_id == "admin:exit":
+			# Exit admin panel - reset step to start and show main keyboard
+			async with get_session() as session:
+				user: User | None = await session.scalar(select(User).where(User.user_id == user_id))
+				if user:
+					user.step = "start"
+					await session.commit()
+			
+			# Send main keyboard
+			from src.context.keyboards.reply.mainButtons import build_keyboard_for
+			from src.context.messages.commands.start import get_message as get_start_message
+			kb, _ = await build_keyboard_for(user_id)
+			name = message.from_user.first_name if message.from_user else None
+			start_text = get_start_message(name)
+			await message.answer("✅ از پنل مدیریت خارج شدید.", reply_markup=kb, parse_mode="Markdown", link_preview_options=LinkPreviewOptions(is_disabled=True))
+			return
+		
+		# Handle other admin panel buttons (placeholder for now)
+		if admin_id in ["admin:user_management", "admin:chat_management", "admin:financial_management", "admin:reports_management", "admin:pricing_management", "admin:bot_settings"]:
+			await message.answer(f"🔧 بخش {admin_id} در حال توسعه است...")
+			return
+
 	await message.answer("🔸 متوجه نشدم چی میخوای 🙃\n\nاگر نیاز به کمک داری دستور /help رو بفرست")
 
 

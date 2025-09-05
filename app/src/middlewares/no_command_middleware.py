@@ -16,6 +16,7 @@ ALLOWED_COMMANDS_BY_STEP: dict[str, set[str]] = {
 	"searching": {"/on", "/off", "/credit", "/link", "/instagram"},
 	"chatting": {"/help_deleteMessage", "/delete_messages_*"},
 	"sending_location": set(),
+	"admin_panel": {"/panel_*", "/panel-*"},
 }
 
 
