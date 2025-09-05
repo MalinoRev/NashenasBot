@@ -592,13 +592,13 @@ async def handle_text_reply(message: Message) -> None:
 			from src.context.keyboards.reply.admin_rewards_back import resolve_id_from_text as resolve_back_id
 			back_id = resolve_back_id(text)
 			if back_id == "admin_rewards:back":
-				# Return to admin management
-				from src.services.admin_list_service import get_admins_list
-				from src.context.messages.replies.admin_management_welcome import get_message as get_admin_message
-				from src.context.keyboards.inline.admin_management_menu import build_keyboard as build_admin_kb
-				
-				admins_list = await get_admins_list()
-				await message.answer(get_admin_message(admins_list), reply_markup=build_admin_kb(), parse_mode="Markdown")
+				# Return to main admin panel
+				user.step = "admin_panel"
+				await session.commit()
+				from src.context.messages.replies.admin_panel_welcome import get_message as get_admin_panel_message
+				from src.context.keyboards.reply.admin_panel import build_keyboard as build_admin_panel_kb
+				kb, _ = build_admin_panel_kb()
+				await message.answer(get_admin_panel_message(), reply_markup=kb, parse_mode="Markdown")
 				return
 			
 			# Validate and process the user ID
@@ -643,6 +643,13 @@ async def handle_text_reply(message: Message) -> None:
 					from src.context.keyboards.reply.admin_rewards_back import build_keyboard as build_back_kb
 					await message.answer(get_already_admin_message(), reply_markup=build_back_kb(), parse_mode="Markdown")
 					return
+				
+				# Show processing message first and reset step
+				user.step = "admin_panel"
+				await session.commit()
+				from src.context.keyboards.reply.admin_panel import build_keyboard as build_admin_panel_kb
+				kb, _ = build_admin_panel_kb()
+				await message.answer("⏳ در حال پردازش...", reply_markup=kb)
 				
 				# Show confirmation
 				from src.context.messages.replies.admin_add_confirm import get_message as get_confirm_message
