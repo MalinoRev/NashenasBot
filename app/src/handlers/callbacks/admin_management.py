@@ -64,7 +64,25 @@ async def handle_admin_management(callback: CallbackQuery) -> None:
 		return
 	
 	if data == "admin_management:remove":
-		await callback.answer("➖ حذف ادمین - در حال توسعه...", show_alert=True)
+		# Set user step to remove admin
+		async with get_session() as session:
+			user: User | None = await session.scalar(select(User).where(User.user_id == user_id))
+			if user:
+				user.step = "admin_remove"
+				await session.commit()
+		
+		# Send prompt message with back button
+		from src.context.messages.replies.admin_remove_prompt import get_message as get_prompt_message
+		from src.context.keyboards.reply.admin_rewards_back import build_keyboard as build_back_kb
+		
+		# Delete the previous message and send a new one
+		try:
+			await callback.message.delete()
+		except Exception:
+			pass
+		
+		await callback.message.answer(get_prompt_message(), reply_markup=build_back_kb(), parse_mode="Markdown")
+		await callback.answer()
 		return
 	
 	await callback.answer()

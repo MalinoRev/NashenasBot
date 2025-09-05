@@ -409,6 +409,54 @@ async def test_regex_command(message: Message) -> None:
 	return
 
 
+# /panel -> enter admin panel (admin only)
+@router.message(Command("panel"))
+async def panel_command(message: Message) -> None:
+	from src.core.database import get_session
+	from src.databases.users import User
+	from src.databases.admins import Admin
+	from sqlalchemy import select
+	import os
+	from src.context.messages.commands.panel import (
+		get_message as get_panel_message,
+		get_access_denied_message
+	)
+
+	user_id = message.from_user.id if message.from_user else 0
+	# Check if user is admin
+	is_admin = False
+	try:
+		admin_env = os.getenv("TELEGRAM_ADMIN_USER_ID")
+		if user_id and admin_env and str(user_id) == str(admin_env):
+			is_admin = True
+		else:
+			if user_id:
+				async with get_session() as session:
+					user: User | None = await session.scalar(select(User).where(User.user_id == user_id))
+					if user is not None:
+						exists = await session.scalar(select(Admin.id).where(Admin.user_id == user.id))
+						is_admin = bool(exists)
+	except Exception:
+		is_admin = False
+	
+	if not is_admin:
+		await message.answer(get_access_denied_message())
+		return
+
+	# Set user step to admin panel
+	async with get_session() as session:
+		user: User | None = await session.scalar(select(User).where(User.user_id == user_id))
+		if user:
+			user.step = "admin_panel"
+			await session.commit()
+	
+	# Show admin panel
+	from src.context.messages.replies.admin_panel_welcome import get_message as get_admin_panel_message
+	from src.context.keyboards.reply.admin_panel import build_keyboard as build_admin_panel_kb
+	kb, _ = build_admin_panel_kb()
+	await message.answer(get_admin_panel_message(), reply_markup=kb, parse_mode="Markdown")
+
+
 # /panel_exit -> exit admin panel (admin only)
 @router.message(Command("panel_exit"))
 async def panel_exit_command(message: Message) -> None:
