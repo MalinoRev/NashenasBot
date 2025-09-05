@@ -564,6 +564,10 @@ async def handle_any_callback(callback: CallbackQuery) -> None:
 		from src.handlers.callbacks.admin_management import handle_admin_management
 		await handle_admin_management(callback)
 		return
+	if data.startswith("admin_add_confirm:"):
+		from src.handlers.callbacks.admin_add_confirm import handle_admin_add_confirm
+		await handle_admin_add_confirm(callback)
+		return
 	await callback.answer()
 	await callback.message.answer("❌ در هنگام پردازش درخواست شما خطایی رخ داد ❌")
 

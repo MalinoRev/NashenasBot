@@ -42,7 +42,25 @@ async def handle_admin_management(callback: CallbackQuery) -> None:
 	
 	# Handle different admin management options
 	if data == "admin_management:add":
-		await callback.answer("➕ اضافه کردن ادمین - در حال توسعه...", show_alert=True)
+		# Set user step to add admin
+		async with get_session() as session:
+			user: User | None = await session.scalar(select(User).where(User.user_id == user_id))
+			if user:
+				user.step = "admin_add"
+				await session.commit()
+		
+		# Send prompt message with back button
+		from src.context.messages.replies.admin_add_prompt import get_message as get_prompt_message
+		from src.context.keyboards.reply.admin_rewards_back import build_keyboard as build_back_kb
+		
+		# Delete the previous message and send a new one
+		try:
+			await callback.message.delete()
+		except Exception:
+			pass
+		
+		await callback.message.answer(get_prompt_message(), reply_markup=build_back_kb(), parse_mode="Markdown")
+		await callback.answer()
 		return
 	
 	if data == "admin_management:remove":
