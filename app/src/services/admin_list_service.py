@@ -11,7 +11,7 @@ async def get_admins_list() -> str:
 	"""
 	async with get_session() as session:
 		# Get all admins with their user information
-		admins = await session.scalars(
+		admins = await session.execute(
 			select(Admin, User)
 			.join(User, Admin.user_id == User.id)
 			.order_by(Admin.id.desc())

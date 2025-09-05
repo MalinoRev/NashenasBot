@@ -57,12 +57,9 @@ async def handle_admin_add_confirm(callback: CallbackQuery) -> None:
 		# Extract target user ID from callback data
 		target_user_id = int(data.split(":")[2])
 		
-		# Check user step and process confirmation
+		# Process confirmation (no step validation needed since we reset step in processing message)
 		async with get_session() as session:
 			user: User | None = await session.scalar(select(User).where(User.user_id == user_id))
-			if not user or user.step != "admin_add":
-				await callback.answer("❌ شما در مرحله اضافه کردن ادمین نیستید.", show_alert=True)
-				return
 			
 			# Find the target user
 			target_user: User | None = await session.scalar(select(User).where(User.user_id == target_user_id))
@@ -82,11 +79,9 @@ async def handle_admin_add_confirm(callback: CallbackQuery) -> None:
 			await session.commit()
 		
 		# Send notification to the new admin
-		from aiogram import Bot
 		from src.context.messages.notifications.admin_promotion import get_message as get_notification_message
-		bot = Bot.get_current()
 		try:
-			await bot.send_message(
+			await callback.bot.send_message(
 				chat_id=target_user.user_id,
 				text=get_notification_message(),
 				parse_mode="Markdown"
