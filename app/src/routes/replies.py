@@ -819,6 +819,47 @@ async def handle_text_reply(message: Message) -> None:
 				await message.answer(get_invalid_amount_message(), reply_markup=build_back_kb(), parse_mode="Markdown")
 				return
 
+	# Handle pricing management
+	if text == "💳 مدیریت تعرفه ها و محصولات":
+		# Check if user is admin
+		from src.core.database import get_session
+		from src.databases.users import User
+		from src.databases.admins import Admin
+		from sqlalchemy import select
+		import os
+		
+		user_id = message.from_user.id if message.from_user else 0
+		is_admin = False
+		try:
+			admin_env = os.getenv("TELEGRAM_ADMIN_USER_ID")
+			if user_id and admin_env and str(user_id) == str(admin_env):
+				is_admin = True
+			else:
+				if user_id:
+					async with get_session() as session:
+						user: User | None = await session.scalar(select(User).where(User.user_id == user_id))
+						if user is not None:
+							exists = await session.scalar(select(Admin.id).where(Admin.user_id == user.id))
+							is_admin = bool(exists)
+		except Exception:
+			is_admin = False
+		
+		if not is_admin:
+			await message.answer("❌ شما دسترسی به این بخش ندارید.")
+			return
+		
+		# Check user step
+		async with get_session() as session:
+			user: User | None = await session.scalar(select(User).where(User.user_id == user_id))
+			if not user or user.step != "admin_panel":
+				await message.answer("❌ شما در پنل مدیریت نیستید.")
+				return
+		
+		# Show pricing management information
+		from src.context.messages.replies.pricing_management_welcome import get_message as get_pricing_message
+		await message.answer(get_pricing_message(), parse_mode="Markdown")
+		return
+
 	# Handle admin management
 	if text == "👑 مدیریت ادمین ها":
 		# Check if user is super admin (only super admins can manage admins)
