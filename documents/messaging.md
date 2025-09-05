@@ -117,3 +117,13 @@ This document explains the generic pattern for sending messages and photos in th
   2. هندلر را در `handlers/replies/` ایجاد کنید و یکی از خروجی‌های قراردادی بالا را برگردانید.
   3. در `routes/replies.py` آن را به آیدی پایدار دکمه (از `mainButtons`) متصل کنید.
   4. در صورت نیاز محدودیت/شرط اولیه (مثلاً تکمیل پروفایل یا بررسی step) را در روت اعمال کنید.
+
+## Processing Toast vs. Custom Alerts (Callbacks)
+
+- A generic short "processing" toast is shown for most callbacks by `ProcessingToastMiddleware` using `event.answer(get_processing_message())`.
+- Some callbacks must show their own alerts (e.g., bounds, insufficient credit). For these, add their prefixes to the `skip_prefixes` tuple in `app/src/middlewares/processing_toast_middleware.py` so the generic toast does not preempt your alert.
+- Example (fixed): to let insufficient credit alert appear for list direct send flow, we skipped:
+  - `direct_list_send_confirm:`
+  - `direct_list_send_cancel:`
+  - `direct_list_send_edit:`
+- Then in the handler, call `await callback.answer(get_insufficient_credit_alert(), show_alert=True)` to show the alert reliably.

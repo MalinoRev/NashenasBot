@@ -8,6 +8,8 @@ from src.context.keyboards.reply.special_contact import build_back_keyboard as b
 from src.context.keyboards.reply.mainButtons import build_keyboard_for
 from src.context.messages.commands.start import get_message as get_start_message
 from src.context.alerts.insufficient_credit import get_message as get_insufficient_credit_alert
+from src.databases.directs import Direct
+from src.services.direct_service import DirectService
 
 
 def _parse_kind_page(data: str) -> tuple[str | None, int | None]:
@@ -44,6 +46,8 @@ async def handle_direct_list_send_confirm(callback: CallbackQuery) -> None:
 	kind, page = _parse_kind_page(data)
 	user_id = callback.from_user.id if callback.from_user else 0
 
+	# First: charge coins and reset step
+	sender_internal_id: int | None = None
 	async with get_session() as session:
 		user: User | None = await session.scalar(select(User).where(User.user_id == user_id))
 		if not user:
@@ -60,11 +64,32 @@ async def handle_direct_list_send_confirm(callback: CallbackQuery) -> None:
 		if cost > 0:
 			user.credit = balance - cost
 		user.step = "start"
+		sender_internal_id = user.id
 		await session.commit()
+
+	# Second: send notification to each recipient for the latest saved direct
+	if sender_internal_id:
+		service = DirectService(callback.message.bot)
+		async with get_session() as session2:
+			for rid in _extract_recipients_from_step(getattr(user, "step", "")) if False else recipients:  # reuse computed recipients
+				# Resolve recipient telegram id
+				target: User | None = await session2.scalar(select(User).where(User.id == rid))
+				if not target or not target.user_id:
+					continue
+				# Fetch latest direct id for (sender_internal_id -> rid)
+				direct_obj: Direct | None = await session2.scalar(
+					select(Direct).where(Direct.user_id == sender_internal_id, Direct.target_id == rid).order_by(Direct.id.desc())
+				)
+				if not direct_obj:
+					continue
+				try:
+					await service.send_notification_to_receiver(int(target.user_id), int(direct_obj.id))
+				except Exception:
+					pass
 
 	# Acknowledge and send /start
 	msg = "✅ پیام شما برای ارسال به لیست ثبت شد."
-	if cost > 0:
+	if 'cost' in locals() and cost > 0:
 		msg = f"✅ پیام شما ثبت شد و {cost} سکه کسر گردید."
 	try:
 		await callback.message.edit_text(msg)
