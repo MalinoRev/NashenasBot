@@ -253,11 +253,11 @@ class ProfileMiddleware(BaseMiddleware):
 					# Keep step with stabilized recipient ids until user confirms/cancels
 					await session.commit()
 					# Send list confirmation preview with confirm/cancel/edit keyboard
-					from src.context.messages.direct.list_confirm_preview import format_message as _list_preview
+					from src.context.messages.direct.list_confirm_preview import format_header as _list_header, format_footer as _list_footer
 					from src.context.keyboards.inline.direct_list_send_confirm import build_keyboard as _list_kb
 					try:
-						# Show recipients info in preview formatted like search results (quoted blocks)
-						preview_text = _list_preview(kind or "list", page or 1)
+						# Header
+						preview_text = _list_header()
 						if recipients_ids:
 							from sqlalchemy import select as _select2, func as _func2
 							from src.databases.users import User as _U3
@@ -300,10 +300,14 @@ class ProfileMiddleware(BaseMiddleware):
 								)
 								lines.append(f"<blockquote>{block_inner}</blockquote>")
 							if lines:
-								preview_text = preview_text + "\n\n" + "\n".join(lines) + "\n\nلطفاً یکی از گزینه‌ها را انتخاب کنید:"
-						await event.answer(preview_text, parse_mode="HTML", reply_markup=_list_kb(kind or "list", page or 1))
+								preview_text = preview_text + "\n\n" + "\n".join(lines)
+						# Footer with cost and balance
+						cost = len(recipients_ids)
+						balance = int(user.credit or 0)
+						preview_text = preview_text + _list_footer(cost, balance)
+						await event.answer(preview_text, parse_mode="HTML", reply_markup=_list_kb("list", 1))
 					except Exception:
-						await event.answer(_list_preview(kind or "list", page or 1), reply_markup=_list_kb(kind or "list", page or 1))
+						await event.answer(_list_header(), reply_markup=_list_kb("list", 1))
 					return None
 
 			# If a command is sent while profile is not complete, block it
