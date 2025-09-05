@@ -4,10 +4,12 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 def get_rows() -> list[list[tuple[str, str]]]:
 	# Each tuple is (stable_id, label)
 	return [
+		[("admin:statistics", "📈 آمار گیری")],
 		[("admin:user_management", "👥 مدیریت کاربران"), ("admin:chat_management", "💬 مدیریت چت ها")],
 		[("admin:financial_management", "💰 مدیریت مالی"), ("admin:reports_management", "📊 مدیریت گزارشات")],
 		[("admin:pricing_management", "💳 مدیریت تعرفه ها و محصولات")],
-		[("admin:bot_settings", "⚙️ تنظیمات ربات")],
+		[("admin:bot_settings", "⚙️ تنظیمات ربات"), ("admin:rewards_management", "🎁 مدیریت پاداش ها")],
+		[("admin:admin_management", "👑 مدیریت ادمین ها"), ("admin:support_management", "🛟 مدیریت پشتیبان ها")],
 		[("admin:exit", "🚪 خروج از پنل ادمین")],
 	]
 

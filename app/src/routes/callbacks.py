@@ -556,6 +556,10 @@ async def handle_any_callback(callback: CallbackQuery) -> None:
 		from src.handlers.callbacks.direct_list import handle_direct_list
 		await handle_direct_list(callback)
 		return
+	if data.startswith("admin_rewards:"):
+		from src.handlers.callbacks.admin_rewards_menu import handle_admin_rewards_menu
+		await handle_admin_rewards_menu(callback)
+		return
 	await callback.answer()
 	await callback.message.answer("❌ در هنگام پردازش درخواست شما خطایی رخ داد ❌")
 
