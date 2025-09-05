@@ -7,6 +7,7 @@ from src.context.keyboards.reply.nearby import resolve_id_from_text as resolve_n
 from src.handlers.replies.chat_actions import handle_chat_action
 from src.context.keyboards.reply.mainButtons import build_keyboard as build_main_kb, build_keyboard_for
 from src.context.messages.commands.start import get_message as get_start_message
+from src.databases.users import User
 
 
 router = Router(name="replies")
@@ -821,9 +822,11 @@ async def handle_text_reply(message: Message) -> None:
 
 	# Handle pricing management back button
 	if text == "🔙 بازگشت" and user.step.startswith("pricing_set_"):
+		print(f"LOG: Back button pressed, current step: {user.step}")
 		# Reset user step to admin panel
 		user.step = "admin_panel"
 		await session.commit()
+		print(f"LOG: Step updated to: {user.step}")
 		
 		# Show admin panel
 		from src.context.messages.replies.admin_panel_welcome import get_message as get_admin_panel_message
@@ -847,10 +850,24 @@ async def handle_text_reply(message: Message) -> None:
 						.where(Product.id == product.id)
 						.values(vip_rank_price=new_price)
 					)
+					# Reset user step to admin panel
+					print(f"LOG: Before step change - user.step: {user.step}")
+					await session.execute(
+						update(User)
+						.where(User.id == user.id)
+						.values(step="admin_panel")
+					)
 					await session.commit()
+					print(f"LOG: Step updated in database to admin_panel")
 					
 					from src.context.messages.replies.pricing_set_success import get_success_message
 					await message.answer(get_success_message("تعرفه رنک VIP", new_price, "price"), parse_mode="HTML")
+					
+					# Show admin panel
+					from src.context.messages.replies.admin_panel_welcome import get_message as get_admin_panel_message
+					from src.context.keyboards.reply.admin_panel import build_keyboard as build_admin_panel_kb
+					kb, _ = build_admin_panel_kb()
+					await message.answer(get_admin_panel_message(), reply_markup=kb, parse_mode="Markdown")
 				else:
 					await message.answer("❌ خطا در یافتن اطلاعات تعرفه‌ها.")
 			else:
@@ -875,10 +892,22 @@ async def handle_text_reply(message: Message) -> None:
 						.where(Product.id == product.id)
 						.values(vip_rank_time=new_time)
 					)
+					# Reset user step to admin panel
+					await session.execute(
+						update(User)
+						.where(User.id == user.id)
+						.values(step="admin_panel")
+					)
 					await session.commit()
 					
 					from src.context.messages.replies.pricing_set_success import get_success_message
 					await message.answer(get_success_message("زمان رنک VIP", new_time, "time"), parse_mode="HTML")
+					
+					# Show admin panel
+					from src.context.messages.replies.admin_panel_welcome import get_message as get_admin_panel_message
+					from src.context.keyboards.reply.admin_panel import build_keyboard as build_admin_panel_kb
+					kb, _ = build_admin_panel_kb()
+					await message.answer(get_admin_panel_message(), reply_markup=kb, parse_mode="Markdown")
 				else:
 					await message.answer("❌ خطا در یافتن اطلاعات تعرفه‌ها.")
 			else:
@@ -903,10 +932,22 @@ async def handle_text_reply(message: Message) -> None:
 						.where(Product.id == product.id)
 						.values(delete_account_price=new_price)
 					)
+					# Reset user step to admin panel
+					await session.execute(
+						update(User)
+						.where(User.id == user.id)
+						.values(step="admin_panel")
+					)
 					await session.commit()
 					
 					from src.context.messages.replies.pricing_set_success import get_success_message
 					await message.answer(get_success_message("تعرفه حذف اکانت", new_price, "price"), parse_mode="HTML")
+					
+					# Show admin panel
+					from src.context.messages.replies.admin_panel_welcome import get_message as get_admin_panel_message
+					from src.context.keyboards.reply.admin_panel import build_keyboard as build_admin_panel_kb
+					kb, _ = build_admin_panel_kb()
+					await message.answer(get_admin_panel_message(), reply_markup=kb, parse_mode="Markdown")
 				else:
 					await message.answer("❌ خطا در یافتن اطلاعات تعرفه‌ها.")
 			else:
@@ -931,10 +972,22 @@ async def handle_text_reply(message: Message) -> None:
 						.where(Product.id == product.id)
 						.values(unban_price=new_price)
 					)
+					# Reset user step to admin panel
+					await session.execute(
+						update(User)
+						.where(User.id == user.id)
+						.values(step="admin_panel")
+					)
 					await session.commit()
 					
 					from src.context.messages.replies.pricing_set_success import get_success_message
 					await message.answer(get_success_message("تعرفه رفع مسدودیت", new_price, "price"), parse_mode="HTML")
+					
+					# Show admin panel
+					from src.context.messages.replies.admin_panel_welcome import get_message as get_admin_panel_message
+					from src.context.keyboards.reply.admin_panel import build_keyboard as build_admin_panel_kb
+					kb, _ = build_admin_panel_kb()
+					await message.answer(get_admin_panel_message(), reply_markup=kb, parse_mode="Markdown")
 				else:
 					await message.answer("❌ خطا در یافتن اطلاعات تعرفه‌ها.")
 			else:
