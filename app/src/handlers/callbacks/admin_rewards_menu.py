@@ -49,16 +49,25 @@ async def handle_admin_rewards_menu(callback: CallbackQuery) -> None:
 				user.step = "admin_rewards_profile"
 				await session.commit()
 		
-		# Send prompt message with back button
+		# Get current reward amount and send prompt message
 		from src.context.messages.replies.admin_rewards_profile_prompt import get_message as get_prompt_message
 		from src.context.keyboards.reply.admin_rewards_back import build_keyboard as build_back_kb
+		from src.databases.rewards import Reward
 		
+		# Fetch current reward amount
+		current_amount = 0
+		async with get_session() as session:
+			reward: Reward | None = await session.scalar(select(Reward))
+			if reward:
+				current_amount = reward.profile_amount or 0
+		
+		# Delete the previous message and send a new one
 		try:
-			await callback.message.edit_text(get_prompt_message(), reply_markup=None, parse_mode="Markdown")
+			await callback.message.delete()
 		except Exception:
-			await callback.message.answer(get_prompt_message(), parse_mode="Markdown")
+			pass
 		
-		await callback.message.answer("⚙️ تنظیم پاداش تکمیل پروفایل", reply_markup=build_back_kb())
+		await callback.message.answer(get_prompt_message(current_amount), reply_markup=build_back_kb(), parse_mode="Markdown")
 		await callback.answer()
 		return
 	
