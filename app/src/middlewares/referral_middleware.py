@@ -1,4 +1,3 @@
-import os
 from typing import Any, Callable, Dict, Optional
 
 from aiogram import BaseMiddleware
@@ -7,6 +6,7 @@ from sqlalchemy import select, update
 
 from src.core.database import get_session
 from src.databases.users import User
+from src.databases.rewards import Reward
 
 
 class ReferralMiddleware(BaseMiddleware):
@@ -59,12 +59,9 @@ class ReferralMiddleware(BaseMiddleware):
                 print(f"LOG: Referrer {user.referraled_queue} not found")
                 return result
 
-            # Get referral coin amount from environment
-            try:
-                referral_coin_amount = int(os.getenv("REFERRAL_COIN_AMOUNT", "10"))
-            except (ValueError, TypeError):
-                referral_coin_amount = 10  # Default value
-                print(f"LOG: Invalid REFERRAL_COIN_AMOUNT, using default: {referral_coin_amount}")
+            # Get referral coin amount from rewards table
+            reward: Reward | None = await session.scalar(select(Reward).limit(1))
+            referral_coin_amount = int(getattr(reward, "invite_amount", 0)) if reward else 0
 
             # Update referrer's credit
             old_credit = referrer.credit or 0

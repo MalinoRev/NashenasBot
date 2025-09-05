@@ -855,9 +855,21 @@ async def handle_text_reply(message: Message) -> None:
 				await message.answer("❌ شما در پنل مدیریت نیستید.")
 				return
 		
-		# Show pricing management information
+		# Show pricing management information (from DB)
+		from sqlalchemy import select
+		from src.core.database import get_session
+		from src.databases.products import Product
 		from src.context.messages.replies.pricing_management_welcome import get_message as get_pricing_message
-		await message.answer(get_pricing_message(), parse_mode="Markdown")
+		async with get_session() as session:
+			product: Product | None = await session.scalar(select(Product))
+			unban_price = int(getattr(product, "unban_price", 0)) if product else 0
+			delete_price = int(getattr(product, "delete_account_price", 0)) if product else 0
+			vip_price = int(getattr(product, "vip_rank_price", 0)) if product else 0
+			vip_time_days = int(getattr(product, "vip_rank_time", 0)) if product else 0
+		await message.answer(
+			get_pricing_message(unban_price, delete_price, vip_price, vip_time_days),
+			parse_mode="HTML",
+		)
 		return
 
 	# Handle admin management

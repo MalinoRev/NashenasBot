@@ -17,6 +17,7 @@ import src.databases.contacts  # noqa: F401
 import src.databases.prices  # noqa: F401
 import src.databases.requested_channels  # noqa: F401
 import src.databases.rewards  # noqa: F401
+import src.databases.products  # noqa: F401
 import src.databases.chat_history  # noqa: F401
 import src.databases.likes  # noqa: F401
 import src.databases.media  # noqa: F401
@@ -81,6 +82,7 @@ async def seed_all() -> None:
 		seed_cities_state_31,
 	)
 	from src.databases.seeds.rewards import seed_rewards_defaults
+	from src.databases.seeds.products import seed_products_defaults
 
 	await seed_states()
 	await seed_cities_state_1()
@@ -115,6 +117,7 @@ async def seed_all() -> None:
 	await seed_cities_state_30()
 	await seed_cities_state_31()
 	await seed_rewards_defaults()
+	await seed_products_defaults()
 
 
 def main() -> None:

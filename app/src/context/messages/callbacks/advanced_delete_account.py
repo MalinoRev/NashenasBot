@@ -1,8 +1,13 @@
 import os
+from sqlalchemy import select
+from src.core.database import get_session
+from src.databases.products import Product
 
 
-def get_message() -> str:
-	price = os.getenv("ACCOUNT_DELETE_PRICE", "0")
+async def get_message() -> str:
+	async with get_session() as session:
+		product: Product | None = await session.scalar(select(Product))
+		price = int(getattr(product, "delete_account_price", 0)) if product else 0
 	brand = os.getenv("BOT_BRAND_NAME", "ربات")
 	return (
 		f"👈اگر میخواهید از ربات {brand} بصورت کامل خارج شوید و کل اطلاعات ذخیره شده شما حذف شود\n\n"
@@ -11,8 +16,10 @@ def get_message() -> str:
 	)
 
 
-def get_prepare_message() -> str:
-	price = os.getenv("ACCOUNT_DELETE_PRICE", "0")
+async def get_prepare_message() -> str:
+	async with get_session() as session:
+		product: Product | None = await session.scalar(select(Product))
+		price = int(getattr(product, "delete_account_price", 0)) if product else 0
 	return (
 		"⚠️ توجه داشته باشید بعد از پرداخت مرورگرتان را تا دریافت نتیجه نبندید! ⛔️⛔️⛔️\n\n"
 		"💡 برای ورود به درگاه پرداخت روی لینک زیر ضربه بزنید تا کپی شود سپس وارد مرورگر گوشیتان شده و در بخش آدرس لینک کپی شده را وارد کنید.\n\n"

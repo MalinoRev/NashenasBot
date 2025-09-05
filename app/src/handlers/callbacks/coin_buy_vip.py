@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 from aiogram.types import CallbackQuery, FSInputFile
 
@@ -33,8 +32,13 @@ async def handle_coin_buy_vip(callback: CallbackQuery) -> None:
 	except Exception:
 		pass
 
-	# Prepare message with VIP price
-	vip_price = int(os.getenv("VIP_RANK_PRICE", "0") or 0)
+	# Prepare message with VIP price (from DB)
+	from sqlalchemy import select
+	from src.core.database import get_session
+	from src.databases.products import Product
+	async with get_session() as session:
+		product: Product | None = await session.scalar(select(Product))
+		vip_price = int(getattr(product, "vip_rank_price", 0)) if product else 0
 	await callback.message.answer(get_gateway_prepare(amount=0, price=vip_price))
 
 	# Create payment link (product tag 'vip_rank')

@@ -289,7 +289,8 @@ async def deleted_account_command(message: Message) -> None:
 	from src.context.messages.callbacks.advanced_delete_account import get_message
 	from src.context.keyboards.inline.advanced_delete_account import build_keyboard
 
-	await message.answer(get_message(), reply_markup=build_keyboard())
+	text = await get_message()
+	await message.answer(text, reply_markup=build_keyboard())
 	return
 
 

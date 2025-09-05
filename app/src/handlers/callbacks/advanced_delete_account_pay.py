@@ -23,11 +23,16 @@ async def handle_advanced_delete_account_pay(callback: CallbackQuery) -> None:
 		pass
 
 	# Show preparing message with price
-	await callback.message.answer(get_prepare_message())
+	text = await get_prepare_message()
+	await callback.message.answer(text)
 
-	# Build payment link (use product tag 'delete_account') with price from env
-	import os
-	price_toman = int(os.getenv("ACCOUNT_DELETE_PRICE", "0") or 0)
+	# Build payment link (use product tag 'delete_account') with price from DB
+	from sqlalchemy import select
+	from src.core.database import get_session
+	from src.databases.products import Product
+	async with get_session() as session:
+		product: Product | None = await session.scalar(select(Product))
+		price_toman = int(getattr(product, "delete_account_price", 0)) if product else 0
 	user_id_tg = callback.from_user.id if callback.from_user else 0
 	try:
 		url = await create_payment_link(user_id_tg, price_toman, "delete_account")
