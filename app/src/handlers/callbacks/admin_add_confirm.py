@@ -97,7 +97,7 @@ async def handle_admin_add_confirm(callback: CallbackQuery) -> None:
 			pass
 		
 		admins_list = await get_admins_list()
-		user_name = f"{target_user.first_name or 'نام نامشخص'}{' ' + target_user.last_name if target_user.last_name else ''}"
+		user_name = target_user.tg_name or 'نام نامشخص'
 		await callback.message.answer(f"✅ کاربر {user_name} با موفقیت به عنوان ادمین اضافه شد.", parse_mode="Markdown")
 		await callback.message.answer(get_admin_message(admins_list), reply_markup=build_admin_kb(), parse_mode="Markdown")
 		await callback.answer("✅ ادمین با موفقیت اضافه شد!")

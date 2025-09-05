@@ -615,8 +615,21 @@ async def handle_text_reply(message: Message) -> None:
 				
 				target_user_id = int(normalized_text)
 				
+				# Debug: Check what users exist
+				all_users = await session.scalars(select(User.user_id, User.tg_name).limit(5))
+				print(f"DEBUG: Looking for user_id: {target_user_id}")
+				print(f"DEBUG: Sample users in DB: {list(all_users)}")
+				
 				# Check if user exists in database
 				target_user: User | None = await session.scalar(select(User).where(User.user_id == target_user_id))
+				print(f"LOG: Looking for user_id {target_user_id}")
+				print(f"LOG: Found user: {target_user}")
+				
+				# Also check if there are any users with this user_id
+				all_users_with_id = await session.scalars(select(User).where(User.user_id == target_user_id))
+				users_list = list(all_users_with_id)
+				print(f"LOG: All users with this user_id: {users_list}")
+				
 				if not target_user:
 					from src.context.messages.replies.admin_add_confirm import get_user_not_found_message
 					from src.context.keyboards.reply.admin_rewards_back import build_keyboard as build_back_kb
@@ -635,7 +648,7 @@ async def handle_text_reply(message: Message) -> None:
 				from src.context.messages.replies.admin_add_confirm import get_message as get_confirm_message
 				from src.context.keyboards.inline.admin_add_confirm import build_keyboard as build_confirm_kb
 				
-				user_name = f"{target_user.first_name or 'نام نامشخص'}{' ' + target_user.last_name if target_user.last_name else ''}"
+				user_name = target_user.tg_name or 'نام نامشخص'
 				await message.answer(get_confirm_message(user_name, target_user_id), reply_markup=build_confirm_kb(target_user_id), parse_mode="Markdown")
 				return
 				
