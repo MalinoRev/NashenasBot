@@ -256,14 +256,54 @@ class ProfileMiddleware(BaseMiddleware):
 					from src.context.messages.direct.list_confirm_preview import format_message as _list_preview
 					from src.context.keyboards.inline.direct_list_send_confirm import build_keyboard as _list_kb
 					try:
-						# Show recipients info in preview if available
+						# Show recipients info in preview formatted like search results (quoted blocks)
 						preview_text = _list_preview(kind or "list", page or 1)
 						if recipients_ids:
-							rec_preview = "\n" + "\n".join([f"- ID:{rid}" for rid in recipients_ids])
-							preview_text = preview_text + "\n" + "گیرندگان: \n" + rec_preview
-						await event.answer(preview_text, reply_markup=_list_kb(kind or "list", page or 1))
+							from sqlalchemy import select as _select2, func as _func2
+							from src.databases.users import User as _U3
+							from src.databases.user_profiles import UserProfile as _UP3
+							from src.databases.likes import Like as _Like3
+							import html as _html
+							res = await session.execute(
+								_select2(_U3, _UP3).join(_UP3, _UP3.user_id == _U3.id, isouter=True).where(_U3.id.in_(recipients_ids))
+							)
+							rows_map = {u.id: (u, p) for (u, p) in res.all()
+							}
+							if recipients_ids:
+								likes_res = await session.execute(
+									_select2(_Like3.target_id, _func2.count(_Like3.id)).where(_Like3.target_id.in_(recipients_ids)).group_by(_Like3.target_id)
+								)
+								likes_counts = dict(likes_res.all())
+							else:
+								likes_counts = {}
+							lines: list[str] = []
+							for rid in recipients_ids:
+								u, p = rows_map.get(rid, (None, None))
+								if not u:
+									continue
+								name = (p.name if p and p.name else None) or (u.tg_name or "بدون نام")
+								age = p.age if p and p.age is not None else "?"
+								if p and p.is_female is True:
+									emoji = "👩"
+									gender_word = "دختر"
+								elif p and p.is_female is False:
+									emoji = "👨"
+									gender_word = "پسر"
+								else:
+									emoji = "❔"
+									gender_word = "نامشخص"
+								likes = likes_counts.get(rid, 0)
+								unique_id = u.unique_id or str(u.id)
+								block_inner = (
+									f"🔸 کاربر {_html.escape(str(name))} | {emoji} {gender_word} | سن: {_html.escape(str(age))} | {_html.escape(str(likes))} ❤️\n"
+									f"👤 پروفایل: /user_{_html.escape(str(unique_id))}"
+								)
+								lines.append(f"<blockquote>{block_inner}</blockquote>")
+							if lines:
+								preview_text = preview_text + "\n\n" + "\n".join(lines) + "\n\nلطفاً یکی از گزینه‌ها را انتخاب کنید:"
+						await event.answer(preview_text, parse_mode="HTML", reply_markup=_list_kb(kind or "list", page or 1))
 					except Exception:
-						await event.answer(_list_preview(kind or "list", page or 1))
+						await event.answer(_list_preview(kind or "list", page or 1), reply_markup=_list_kb(kind or "list", page or 1))
 					return None
 
 			# If a command is sent while profile is not complete, block it
