@@ -42,13 +42,12 @@ async def handle_admin_add_confirm(callback: CallbackQuery) -> None:
 	
 	# Handle different confirmation options
 	if data == "admin_add_confirm:no":
-		# Cancel - return to admin management
+		# Cancel - return to admin panel
 		user.step = "admin_panel"
 		await session.commit()
 		
-		from src.services.admin_list_service import get_admins_list
-		from src.context.messages.replies.admin_management_welcome import get_message as get_admin_message
-		from src.context.keyboards.inline.admin_management_menu import build_keyboard as build_admin_kb
+		from src.context.messages.replies.admin_panel_welcome import get_message as get_admin_panel_message
+		from src.context.keyboards.reply.admin_panel import build_keyboard as build_admin_panel_kb
 		
 		# Delete the previous message and send a new one
 		try:
@@ -56,8 +55,8 @@ async def handle_admin_add_confirm(callback: CallbackQuery) -> None:
 		except Exception:
 			pass
 		
-		admins_list = await get_admins_list()
-		await callback.message.answer(get_admin_message(admins_list), reply_markup=build_admin_kb(), parse_mode="Markdown")
+		kb, _ = build_admin_panel_kb()
+		await callback.message.answer(get_admin_panel_message(), reply_markup=kb, parse_mode="Markdown")
 		await callback.answer("❌ عملیات لغو شد.")
 		return
 	
