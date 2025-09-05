@@ -572,6 +572,10 @@ async def handle_any_callback(callback: CallbackQuery) -> None:
 		from src.handlers.callbacks.admin_remove_confirm import handle_admin_remove_confirm
 		await handle_admin_remove_confirm(callback)
 		return
+	if data.startswith("pricing:"):
+		from src.handlers.callbacks.pricing_management import handle_pricing_management
+		await handle_pricing_management(callback)
+		return
 	await callback.answer()
 	await callback.message.answer("❌ در هنگام پردازش درخواست شما خطایی رخ داد ❌")
 

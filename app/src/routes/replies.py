@@ -819,6 +819,132 @@ async def handle_text_reply(message: Message) -> None:
 				await message.answer(get_invalid_amount_message(), reply_markup=build_back_kb(), parse_mode="Markdown")
 				return
 
+	# Handle pricing management back button
+	if text == "🔙 بازگشت" and user.step.startswith("pricing_set_"):
+		# Reset user step to admin panel
+		user.step = "admin_panel"
+		await session.commit()
+		
+		# Show admin panel
+		from src.context.messages.replies.admin_panel_welcome import get_message as get_admin_panel_message
+		from src.context.keyboards.reply.admin_panel import build_keyboard as build_admin_panel_kb
+		kb, _ = build_admin_panel_kb()
+		await message.answer(get_admin_panel_message(), reply_markup=kb, parse_mode="Markdown")
+		return
+
+	# Handle pricing input steps
+	if user.step == "pricing_set_vip_price":
+		# Validate and update VIP price
+		try:
+			new_price = int(text.strip())
+			if 0 <= new_price <= 1000000:
+				from src.databases.products import Product
+				from sqlalchemy import select, update
+				product: Product | None = await session.scalar(select(Product))
+				if product:
+					await session.execute(
+						update(Product)
+						.where(Product.id == product.id)
+						.values(vip_rank_price=new_price)
+					)
+					await session.commit()
+					
+					from src.context.messages.replies.pricing_set_success import get_success_message
+					await message.answer(get_success_message("تعرفه رنک VIP", new_price, "price"), parse_mode="HTML")
+				else:
+					await message.answer("❌ خطا در یافتن اطلاعات تعرفه‌ها.")
+			else:
+				from src.context.messages.replies.pricing_set_success import get_invalid_message
+				await message.answer(get_invalid_message("price"), parse_mode="HTML")
+		except ValueError:
+			from src.context.messages.replies.pricing_set_success import get_invalid_message
+			await message.answer(get_invalid_message("price"), parse_mode="HTML")
+		return
+
+	if user.step == "pricing_set_vip_time":
+		# Validate and update VIP time
+		try:
+			new_time = int(text.strip())
+			if 1 <= new_time <= 365:
+				from src.databases.products import Product
+				from sqlalchemy import select, update
+				product: Product | None = await session.scalar(select(Product))
+				if product:
+					await session.execute(
+						update(Product)
+						.where(Product.id == product.id)
+						.values(vip_rank_time=new_time)
+					)
+					await session.commit()
+					
+					from src.context.messages.replies.pricing_set_success import get_success_message
+					await message.answer(get_success_message("زمان رنک VIP", new_time, "time"), parse_mode="HTML")
+				else:
+					await message.answer("❌ خطا در یافتن اطلاعات تعرفه‌ها.")
+			else:
+				from src.context.messages.replies.pricing_set_success import get_invalid_message
+				await message.answer(get_invalid_message("time"), parse_mode="HTML")
+		except ValueError:
+			from src.context.messages.replies.pricing_set_success import get_invalid_message
+			await message.answer(get_invalid_message("time"), parse_mode="HTML")
+		return
+
+	if user.step == "pricing_set_delete_price":
+		# Validate and update delete price
+		try:
+			new_price = int(text.strip())
+			if 0 <= new_price <= 1000000:
+				from src.databases.products import Product
+				from sqlalchemy import select, update
+				product: Product | None = await session.scalar(select(Product))
+				if product:
+					await session.execute(
+						update(Product)
+						.where(Product.id == product.id)
+						.values(delete_account_price=new_price)
+					)
+					await session.commit()
+					
+					from src.context.messages.replies.pricing_set_success import get_success_message
+					await message.answer(get_success_message("تعرفه حذف اکانت", new_price, "price"), parse_mode="HTML")
+				else:
+					await message.answer("❌ خطا در یافتن اطلاعات تعرفه‌ها.")
+			else:
+				from src.context.messages.replies.pricing_set_success import get_invalid_message
+				await message.answer(get_invalid_message("price"), parse_mode="HTML")
+		except ValueError:
+			from src.context.messages.replies.pricing_set_success import get_invalid_message
+			await message.answer(get_invalid_message("price"), parse_mode="HTML")
+		return
+
+	if user.step == "pricing_set_unban_price":
+		# Validate and update unban price
+		try:
+			new_price = int(text.strip())
+			if 0 <= new_price <= 1000000:
+				from src.databases.products import Product
+				from sqlalchemy import select, update
+				product: Product | None = await session.scalar(select(Product))
+				if product:
+					await session.execute(
+						update(Product)
+						.where(Product.id == product.id)
+						.values(unban_price=new_price)
+					)
+					await session.commit()
+					
+					from src.context.messages.replies.pricing_set_success import get_success_message
+					await message.answer(get_success_message("تعرفه رفع مسدودیت", new_price, "price"), parse_mode="HTML")
+				else:
+					await message.answer("❌ خطا در یافتن اطلاعات تعرفه‌ها.")
+			else:
+				from src.context.messages.replies.pricing_set_success import get_invalid_message
+				await message.answer(get_invalid_message("price"), parse_mode="HTML")
+		except ValueError:
+			from src.context.messages.replies.pricing_set_success import get_invalid_message
+			await message.answer(get_invalid_message("price"), parse_mode="HTML")
+		return
+
 	# Handle pricing management
 	if text == "💳 مدیریت تعرفه ها و محصولات":
 		# Check if user is admin
@@ -860,6 +986,7 @@ async def handle_text_reply(message: Message) -> None:
 		from src.core.database import get_session
 		from src.databases.products import Product
 		from src.context.messages.replies.pricing_management_welcome import get_message as get_pricing_message
+		from src.context.keyboards.inline.pricing_management_menu import build_keyboard as build_pricing_menu_kb
 		async with get_session() as session:
 			product: Product | None = await session.scalar(select(Product))
 			unban_price = int(getattr(product, "unban_price", 0)) if product else 0
@@ -868,6 +995,7 @@ async def handle_text_reply(message: Message) -> None:
 			vip_time_days = int(getattr(product, "vip_rank_time", 0)) if product else 0
 		await message.answer(
 			get_pricing_message(unban_price, delete_price, vip_price, vip_time_days),
+			reply_markup=build_pricing_menu_kb(),
 			parse_mode="HTML",
 		)
 		return
