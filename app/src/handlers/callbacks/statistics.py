@@ -26,6 +26,7 @@ from src.context.messages.replies.statistics_top_chat_senders import get_message
 from src.context.messages.replies.statistics_top_chat_receivers import get_message as get_top_chat_receivers_message
 from src.context.messages.replies.statistics_top_likes import get_message as get_top_likes_message
 from src.context.messages.replies.statistics_top_likers import get_message as get_top_likers_message
+from src.context.messages.replies.statistics_top_referrers import get_message as get_top_referrers_message
 from src.context.keyboards.inline.statistics_back import build_keyboard as build_statistics_back_kb
 
 
@@ -502,6 +503,40 @@ async def _show_top_likers(callback: CallbackQuery) -> None:
 	await callback.answer()
 
 
+async def _show_top_referrers(callback: CallbackQuery) -> None:
+	"""Show top 10 users with most referrals (most users referred by them)"""
+	async with get_session() as session:
+		# Query to get users with most referrals
+		# We need to create a subquery to get the referrer users and count their referrals
+		from sqlalchemy import alias
+		
+		# Create alias for the referred users table
+		referred_users = alias(User, name='referred_users')
+		
+		# Query to get referrer users and count their referrals
+		query = (
+			select(User, func.count(referred_users.c.id).label('referrals_count'))
+			.join(referred_users, User.id == referred_users.c.referraled_by)
+			.group_by(User.id)
+			.order_by(desc('referrals_count'))
+			.limit(10)
+		)
+		
+		result = await session.execute(query)
+		referrers = result.fetchall()
+	
+	# Format and send the statistics
+	text = get_top_referrers_message(referrers)
+	kb = build_statistics_back_kb()
+	
+	await callback.message.edit_text(
+		text,
+		reply_markup=kb,
+		parse_mode="Markdown"
+	)
+	await callback.answer()
+
+
 async def _handle_comparison_statistics(callback: CallbackQuery, action: str) -> None:
 	"""Handle comparison statistics display"""
 	if action == "top_successful_transactions":
@@ -534,6 +569,10 @@ async def _handle_comparison_statistics(callback: CallbackQuery, action: str) ->
 	
 	if action == "top_likers":
 		await _show_top_likers(callback)
+		return
+	
+	if action == "top_referrers":
+		await _show_top_referrers(callback)
 		return
 	
 	# Placeholder for other comparison statistics - will be implemented based on user requirements
