@@ -4,7 +4,16 @@ def get_message(referral_id: str | None, display_name: str | None) -> str:
 	if not referral_id:
 		return "لینک ناشناس شما هنوز ایجاد نشده است. کمی بعد دوباره تلاش کنید."
 
-	bot_username = os.getenv("TELEGRAM_BOT_USERNAME")
+	# Prefer DB settings; fallback to env
+	try:
+		import asyncio
+		from src.services.bot_settings_service import get_bot_settings
+		settings = asyncio.get_event_loop().run_until_complete(get_bot_settings())  # type: ignore[arg-type]
+		bot_username = getattr(settings, "bot_channel", None)
+	except Exception:
+		bot_username = None
+	if not bot_username:
+		bot_username = os.getenv("TELEGRAM_BOT_USERNAME")
 	if not bot_username:
 		return "خطا در تنظیمات بات. لطفاً با مدیر تماس بگیرید."
 

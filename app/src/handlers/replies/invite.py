@@ -21,12 +21,25 @@ async def handle_invite(telegram_user_id: int) -> dict:
 				select(func.count()).select_from(User).where(User.referraled_by == user.id)
 			) or 0
 
-	bot_username = os.getenv("TELEGRAM_BOT_USERNAME", "")
+	# Prefer DB settings; fallback to env
+	try:
+		import asyncio
+		from src.services.bot_settings_service import get_bot_settings
+		settings = asyncio.get_event_loop().run_until_complete(get_bot_settings())  # type: ignore[arg-type]
+		bot_username = getattr(settings, "bot_channel", None) or ""
+	except Exception:
+		bot_username = os.getenv("TELEGRAM_BOT_USERNAME", "")
 	# Build absolute path to image (located under /app/src/context/resources/images)
 	image_path = str(
 		Path(__file__).resolve().parents[2] / "context" / "resources" / "images" / "invite.jpg"
 	)
-	caption = get_caption(bot_username or "Melogapbot", referral_id or "")
+	# Fetch brand name for caption
+	try:
+		from src.services.bot_settings_service import get_bot_name
+		brand = await get_bot_name()
+	except Exception:
+		brand = None
+	caption = get_caption(bot_username or "Melogapbot", referral_id or "", brand)
 
 	# Return a structured payload for the route to send photo + caption, then a text
 	return {

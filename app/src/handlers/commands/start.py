@@ -16,7 +16,7 @@ async def start_command(message: Message) -> None:
 	name: Optional[str] = None
 	if user:
 		name = user.first_name or user.username or None
-	text = get_start_message(name)
+	text = await get_start_message(name)
 	kb, _ = await build_keyboard_for(user.id if user else None)
 	await message.answer(text, reply_markup=kb)
 

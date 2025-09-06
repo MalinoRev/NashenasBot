@@ -15,7 +15,7 @@ async def start_command(message: Message) -> None:
 	name = None
 	if message.from_user:
 		name = message.from_user.first_name or message.from_user.username or None
-	text = get_start_message(name)
+	text = await get_start_message(name)
 	kb, _ = await build_keyboard_for(message.from_user.id if message.from_user else None)
 	await message.answer(
 		text,
@@ -382,13 +382,23 @@ async def instagram_command(message: Message) -> None:
 			return
 
 	await message.answer(get_intro())
-	# Build fresh link from referral_id to ensure only the URL is sent
+	# Build fresh link from referral_id using DB bot channel (fallback to env)
 	async with get_session() as session2:
 		user2: User | None = await session2.scalar(select(User).where(User.user_id == user_id))
 		referral_id = user2.referral_id if user2 else None
-		link = get_link(referral_id)
-		if link:
-			await message.answer(format_link(link))
+		if referral_id:
+			try:
+				from src.services.bot_settings_service import get_bot_settings
+				settings = await get_bot_settings()
+				username = getattr(settings, "bot_channel", None)
+				if not username:
+					import os
+					username = os.getenv("TELEGRAM_BOT_USERNAME")
+				if username:
+					link = f"https://telegram.me/{username}?start=inv_{referral_id}"
+					await message.answer(format_link(link))
+			except Exception:
+				pass
 	return
 
 
@@ -509,7 +519,7 @@ async def panel_exit_command(message: Message) -> None:
 	from src.context.messages.commands.start import get_message as get_start_message
 	kb, _ = await build_keyboard_for(user_id)
 	name = message.from_user.first_name if message.from_user else None
-	start_text = get_start_message(name)
+	start_text = await get_start_message(name)
 	await message.answer(get_exit_message(), reply_markup=kb, parse_mode="Markdown", link_preview_options=LinkPreviewOptions(is_disabled=True))
 	return
 

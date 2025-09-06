@@ -92,7 +92,7 @@ class AuthMiddleware(BaseMiddleware):
 		if isinstance(event, Message):
 			try:
 				first_name = event.from_user.first_name if event.from_user else None
-				await event.answer(get_welcome_message(first_name))
+				await event.answer(await get_welcome_message(first_name))
 			except Exception:
 				pass
 		return await handler(event, data)
