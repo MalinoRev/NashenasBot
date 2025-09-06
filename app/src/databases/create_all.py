@@ -32,6 +32,8 @@ from . import user_rewards as _user_rewards  # noqa: F401
 from . import user_settings as _user_settings  # noqa: F401
 from . import user_vips as _user_vips  # noqa: F401
 from . import users as _users  # noqa: F401
+from . import report_categories as _report_categories  # noqa: F401
+from . import reports as _reports  # noqa: F401
 
 
 logging.basicConfig(level=logging.INFO, format="[%(levelname)s] %(message)s")
