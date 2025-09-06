@@ -1565,6 +1565,12 @@ async def handle_text_reply(message: Message) -> None:
 			await show_bot_settings(message)
 			return
 
+		# Handle financial management
+		if admin_id == "admin:financial_management":
+			from src.handlers.callbacks.financial_management_entry import show_financial_management
+			await show_financial_management(message)
+			return
+
 		# Handle back button for bot settings steps
 		from src.context.keyboards.reply.bot_settings_back import resolve_id_from_text as resolve_bot_back
 		bot_back = resolve_bot_back(text)

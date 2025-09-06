@@ -596,6 +596,10 @@ async def handle_any_callback(callback: CallbackQuery) -> None:
 		from src.handlers.callbacks.bot_settings import handle_bot_settings
 		await handle_bot_settings(callback)
 		return
+	if data.startswith("financial:"):
+		from src.handlers.callbacks.financial_management import handle_financial_callbacks
+		await handle_financial_callbacks(callback)
+		return
 	if data.startswith("bot_settings_maintenance:"):
 		from src.handlers.callbacks.bot_settings_maintenance import handle_maintenance_mode_toggle
 		await handle_maintenance_mode_toggle(callback)
