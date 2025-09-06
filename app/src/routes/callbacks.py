@@ -624,6 +624,10 @@ async def handle_any_callback(callback: CallbackQuery) -> None:
 		from src.handlers.callbacks.user_management import handle_user_pagination
 		await handle_user_pagination(callback)
 		return
+	if data.startswith("statistics:"):
+		from src.handlers.callbacks.statistics import handle_statistics_callbacks
+		await handle_statistics_callbacks(callback)
+		return
 	await callback.answer()
 	await callback.message.answer("❌ در هنگام پردازش درخواست شما خطایی رخ داد ❌")
 

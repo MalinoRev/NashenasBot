@@ -1815,8 +1815,14 @@ async def handle_text_reply(message: Message) -> None:
 			await show_user_management(message)
 			return
 
+		# Handle statistics
+		if admin_id == "admin:statistics":
+			from src.handlers.callbacks.statistics_entry import show_statistics
+			await show_statistics(message)
+			return
+
 		# Handle other admin panel buttons (placeholder for now)
-		if admin_id in ["admin:statistics", "admin:financial_management", "admin:reports_management", "admin:pricing_management", "admin:admin_management"]:
+		if admin_id in ["admin:financial_management", "admin:reports_management", "admin:pricing_management", "admin:admin_management"]:
 			from src.context.messages.replies.admin_panel_buttons import get_development_message
 			await message.answer(get_development_message(admin_id))
 			return
