@@ -608,6 +608,14 @@ async def handle_any_callback(callback: CallbackQuery) -> None:
 		from src.handlers.callbacks.bot_settings_maintenance import handle_maintenance_mode_toggle
 		await handle_maintenance_mode_toggle(callback)
 		return
+	if data.startswith("chat_management:"):
+		from src.handlers.callbacks.chat_management import handle_chat_management_callbacks
+		await handle_chat_management_callbacks(callback)
+		return
+	if data.startswith("chat_page:"):
+		from src.handlers.callbacks.chat_management import handle_chat_pagination
+		await handle_chat_pagination(callback)
+		return
 	await callback.answer()
 	await callback.message.answer("❌ در هنگام پردازش درخواست شما خطایی رخ داد ❌")
 

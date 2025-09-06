@@ -33,6 +33,8 @@ class ProcessingToastMiddleware(BaseMiddleware):
 				"chat_request_reject:",
 				"financial:",
 				"financial_page:",
+				"chat_management:",
+				"chat_page:",
 			)
 			if not any(data_str.startswith(pref) for pref in skip_prefixes):
 				try:

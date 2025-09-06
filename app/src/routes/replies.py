@@ -1783,8 +1783,14 @@ async def handle_text_reply(message: Message) -> None:
 				)
 			return
 
+		# Handle chat management
+		if admin_id == "admin:chat_management":
+			from src.handlers.callbacks.chat_management_entry import show_chat_management
+			await show_chat_management(message)
+			return
+
 		# Handle other admin panel buttons (placeholder for now)
-		if admin_id in ["admin:statistics", "admin:user_management", "admin:chat_management", "admin:financial_management", "admin:reports_management", "admin:pricing_management", "admin:admin_management"]:
+		if admin_id in ["admin:statistics", "admin:user_management", "admin:financial_management", "admin:reports_management", "admin:pricing_management", "admin:admin_management"]:
 			from src.context.messages.replies.admin_panel_buttons import get_development_message
 			await message.answer(get_development_message(admin_id))
 			return
