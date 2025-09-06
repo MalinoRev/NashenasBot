@@ -616,6 +616,14 @@ async def handle_any_callback(callback: CallbackQuery) -> None:
 		from src.handlers.callbacks.chat_management import handle_chat_pagination
 		await handle_chat_pagination(callback)
 		return
+	if data.startswith("user_management:"):
+		from src.handlers.callbacks.user_management import handle_user_management_callbacks
+		await handle_user_management_callbacks(callback)
+		return
+	if data.startswith("user_page:"):
+		from src.handlers.callbacks.user_management import handle_user_pagination
+		await handle_user_pagination(callback)
+		return
 	await callback.answer()
 	await callback.message.answer("❌ در هنگام پردازش درخواست شما خطایی رخ داد ❌")
 
