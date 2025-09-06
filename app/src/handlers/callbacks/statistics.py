@@ -310,7 +310,7 @@ async def _show_top_transaction_amounts(callback: CallbackQuery) -> None:
 	async with get_session() as session:
 		# Query to get users with highest total payment amounts (paid_at is not null)
 		query = (
-			select(User, func.sum(Payment.amount).label('total_amount'))
+			select(User, func.sum(Payment.price).label('total_amount'))
 			.join(Payment, User.id == Payment.user_id)
 			.where(Payment.paid_at.isnot(None))
 			.group_by(User.id)
