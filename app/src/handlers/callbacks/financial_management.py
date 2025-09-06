@@ -4,7 +4,11 @@ from sqlalchemy import select, func, desc
 
 from src.core.database import get_session
 from src.databases.payments import Payment
+from src.databases.users import User
 from src.context.keyboards.inline.financial_pagination import build_keyboard as build_financial_pagination
+from src.context.messages.replies.financial_search_prompt import get_message as get_search_prompt
+from src.context.keyboards.reply.financial_search_back import get_keyboard as get_search_back_keyboard
+from src.context.messages.replies.financial_search_results import get_no_results_message, get_results_header, get_single_result_header
 
 
 def _format_currency(amount: int) -> str:
@@ -83,6 +87,56 @@ async def _show_transactions_page(callback, page: int, filter_type: str) -> None
 			await callback.message.answer(text, reply_markup=kb, parse_mode="Markdown")
 
 
+async def search_payments(query: str) -> list[Payment]:
+	"""Search payments by username or payment ID"""
+	async with get_session() as session:
+		# Try to search by payment ID first (if query is numeric)
+		if query.isdigit():
+			payment_id = int(query)
+			payments = list(await session.scalars(
+				select(Payment).where(Payment.id == payment_id)
+			))
+			if payments:
+				return payments
+		
+		# Search by username (with or without @)
+		username = query.lstrip('@')
+		users = list(await session.scalars(
+			select(User).where(User.tg_name.ilike(f"%{username}%"))
+		))
+		
+		if not users:
+			return []
+		
+		# Get payments for found users
+		user_ids = [user.id for user in users]
+		payments = list(await session.scalars(
+			select(Payment).where(Payment.user_id.in_(user_ids)).order_by(desc(Payment.id))
+		))
+		
+		return payments
+
+
+async def handle_payment_search(message, query: str) -> None:
+	"""Handle payment search and display results"""
+	payments = await search_payments(query)
+	
+	if not payments:
+		await message.answer(get_no_results_message(), parse_mode="Markdown")
+		return
+	
+	# Format results
+	if len(payments) == 1:
+		header = get_single_result_header(query)
+	else:
+		header = get_results_header(query, len(payments))
+	
+	rows = [_format_tx_row(p) for p in payments]
+	text = header + "\n".join(rows)
+	
+	await message.answer(text, parse_mode="Markdown")
+
+
 def _format_tx_row(p: Payment) -> str:
 	paid = p.paid_at.strftime("%Y-%m-%d %H:%M") if p.paid_at else "—"
 	status = "✅ پرداخت شده" if p.paid_at else "❌ ناموفق/لغو"
@@ -115,6 +169,28 @@ async def handle_financial_callbacks(callback: CallbackQuery) -> None:
 		
 		# Show transactions with new filter
 		await _show_transactions_page(callback, page, next_filter)
+		await callback.answer()
+		return
+	
+	# Handle search
+	if action == "search":
+		# Set user step to financial_search
+		from src.core.database import get_session
+		from src.databases.users import User
+		from sqlalchemy import select
+		
+		async with get_session() as session:
+			user = await session.scalar(select(User).where(User.user_id == callback.from_user.id))
+			if user:
+				user.step = "financial_search"
+				await session.commit()
+		
+		await callback.message.delete()
+		await callback.message.answer(
+			get_search_prompt(),
+			reply_markup=get_search_back_keyboard(),
+			parse_mode="Markdown"
+		)
 		await callback.answer()
 		return
 	

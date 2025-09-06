@@ -1489,6 +1489,26 @@ async def handle_text_reply(message: Message) -> None:
 					await message.answer("❌ خطا در یافتن تنظیمات ربات.")
 				return
 
+		# Handle financial search (must be before admin panel buttons)
+		if user.step == "financial_search":
+			# Handle back button - check for exact match first
+			if text.strip() == "🔙 بازگشت" or text.strip().lower() in ["بازگشت", "back", "لغو", "cancel"]:
+				# Return to admin panel
+				user.step = "admin_panel"
+				await session.commit()
+				
+				# Show admin panel
+				from src.context.messages.replies.admin_panel_welcome import get_message as get_admin_panel_message
+				from src.context.keyboards.reply.admin_panel import build_keyboard as build_admin_panel_kb
+				kb, _ = build_admin_panel_kb()
+				await message.answer(get_admin_panel_message(), reply_markup=kb, parse_mode="Markdown")
+				return
+			
+			# Handle search query
+			from src.handlers.callbacks.financial_management import handle_payment_search
+			await handle_payment_search(message, text.strip())
+			return
+
 	# Handle admin panel buttons
 	from src.context.keyboards.reply.admin_panel import resolve_id_from_text as resolve_admin_id
 	admin_id = resolve_admin_id(text)
