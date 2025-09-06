@@ -5,6 +5,7 @@ from src.databases.users import User
 from src.databases.chats import Chat
 from src.databases.directs import Direct
 from src.databases.payments import Payment
+from src.databases.likes import Like
 from sqlalchemy import select, func, desc
 from src.context.messages.replies.statistics_welcome import get_message as get_statistics_welcome_message
 from src.context.keyboards.inline.statistics_main_menu import build_keyboard as build_statistics_main_kb
@@ -23,6 +24,8 @@ from src.context.messages.replies.statistics_top_direct_senders import get_messa
 from src.context.messages.replies.statistics_top_direct_receivers import get_message as get_top_direct_receivers_message
 from src.context.messages.replies.statistics_top_chat_senders import get_message as get_top_chat_senders_message
 from src.context.messages.replies.statistics_top_chat_receivers import get_message as get_top_chat_receivers_message
+from src.context.messages.replies.statistics_top_likes import get_message as get_top_likes_message
+from src.context.messages.replies.statistics_top_likers import get_message as get_top_likers_message
 from src.context.keyboards.inline.statistics_back import build_keyboard as build_statistics_back_kb
 
 
@@ -445,6 +448,60 @@ async def _show_top_chat_receivers(callback: CallbackQuery) -> None:
 	await callback.answer()
 
 
+async def _show_top_likes(callback: CallbackQuery) -> None:
+	"""Show top 10 users with most likes received (as target)"""
+	async with get_session() as session:
+		# Query to get users with most likes received (as target)
+		query = (
+			select(User, func.count(Like.id).label('likes_count'))
+			.join(Like, User.id == Like.target_id)
+			.group_by(User.id)
+			.order_by(desc('likes_count'))
+			.limit(10)
+		)
+		
+		result = await session.execute(query)
+		likes = result.fetchall()
+	
+	# Format and send the statistics
+	text = get_top_likes_message(likes)
+	kb = build_statistics_back_kb()
+	
+	await callback.message.edit_text(
+		text,
+		reply_markup=kb,
+		parse_mode="Markdown"
+	)
+	await callback.answer()
+
+
+async def _show_top_likers(callback: CallbackQuery) -> None:
+	"""Show top 10 users with most likes sent (as user)"""
+	async with get_session() as session:
+		# Query to get users with most likes sent (as user)
+		query = (
+			select(User, func.count(Like.id).label('likes_count'))
+			.join(Like, User.id == Like.user_id)
+			.group_by(User.id)
+			.order_by(desc('likes_count'))
+			.limit(10)
+		)
+		
+		result = await session.execute(query)
+		likes = result.fetchall()
+	
+	# Format and send the statistics
+	text = get_top_likers_message(likes)
+	kb = build_statistics_back_kb()
+	
+	await callback.message.edit_text(
+		text,
+		reply_markup=kb,
+		parse_mode="Markdown"
+	)
+	await callback.answer()
+
+
 async def _handle_comparison_statistics(callback: CallbackQuery, action: str) -> None:
 	"""Handle comparison statistics display"""
 	if action == "top_successful_transactions":
@@ -469,6 +526,14 @@ async def _handle_comparison_statistics(callback: CallbackQuery, action: str) ->
 	
 	if action == "top_chat_receivers":
 		await _show_top_chat_receivers(callback)
+		return
+	
+	if action == "top_likes":
+		await _show_top_likes(callback)
+		return
+	
+	if action == "top_likers":
+		await _show_top_likers(callback)
 		return
 	
 	# Placeholder for other comparison statistics - will be implemented based on user requirements
