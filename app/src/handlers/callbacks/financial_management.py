@@ -14,7 +14,16 @@ def _format_currency(amount: int) -> str:
 def _format_tx_row(p: Payment) -> str:
 	paid = p.paid_at.strftime("%Y-%m-%d %H:%M") if p.paid_at else "—"
 	status = "✅ پرداخت شده" if p.paid_at else "❌ ناموفق/لغو"
-	return f"#{p.id} | {p.product} | {p.price:,} | {status} | {paid}"
+	return (
+		f"```\n"
+		f"شناسه تراکنش: #{p.id}\n"
+		f"آیدی کاربر: {p.user_id}\n"
+		f"محصول: {p.product}\n"
+		f"مبلغ: {p.price:,} تومان\n"
+		f"وضعیت: {status}\n"
+		f"تاریخ پرداخت: {paid}\n"
+		f"```"
+	)
 
 
 async def handle_financial_callbacks(callback: CallbackQuery) -> None:
