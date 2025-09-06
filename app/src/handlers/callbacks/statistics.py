@@ -5,7 +5,7 @@ from src.databases.users import User
 from src.databases.chats import Chat
 from src.databases.directs import Direct
 from src.databases.payments import Payment
-from sqlalchemy import select, func
+from sqlalchemy import select, func, desc
 from src.context.messages.replies.statistics_welcome import get_message as get_statistics_welcome_message
 from src.context.keyboards.inline.statistics_main_menu import build_keyboard as build_statistics_main_kb
 from src.context.messages.replies.statistics_table_menu import get_message as get_statistics_table_message
@@ -17,6 +17,8 @@ from src.context.messages.replies.statistics_chats_opened import get_message as 
 from src.context.messages.replies.statistics_directs_sent import get_message as get_directs_sent_message
 from src.context.messages.replies.statistics_transactions_opened import get_message as get_transactions_opened_message
 from src.context.messages.replies.statistics_referrals import get_message as get_referrals_message
+from src.context.messages.replies.statistics_top_successful_transactions import get_message as get_top_successful_transactions_message
+from src.context.messages.replies.statistics_top_transaction_amounts import get_message as get_top_transaction_amounts_message
 from src.context.keyboards.inline.statistics_back import build_keyboard as build_statistics_back_kb
 
 
@@ -303,7 +305,71 @@ async def _show_referrals_statistics(callback: CallbackQuery) -> None:
 	await callback.answer()
 
 
+async def _show_top_transaction_amounts(callback: CallbackQuery) -> None:
+	"""Show top 10 users with highest total transaction amounts"""
+	async with get_session() as session:
+		# Query to get users with highest total payment amounts (paid_at is not null)
+		query = (
+			select(User, func.sum(Payment.amount).label('total_amount'))
+			.join(Payment, User.id == Payment.user_id)
+			.where(Payment.paid_at.isnot(None))
+			.group_by(User.id)
+			.order_by(desc('total_amount'))
+			.limit(10)
+		)
+		
+		result = await session.execute(query)
+		transactions = result.fetchall()
+	
+	# Format and send the statistics
+	text = get_top_transaction_amounts_message(transactions)
+	kb = build_statistics_back_kb()
+	
+	await callback.message.edit_text(
+		text,
+		reply_markup=kb,
+		parse_mode="Markdown"
+	)
+	await callback.answer()
+
+
 async def _handle_comparison_statistics(callback: CallbackQuery, action: str) -> None:
 	"""Handle comparison statistics display"""
-	# Placeholder for now - will be implemented based on user requirements
+	if action == "top_successful_transactions":
+		await _show_top_successful_transactions(callback)
+		return
+	
+	if action == "top_transaction_amounts":
+		await _show_top_transaction_amounts(callback)
+		return
+	
+	# Placeholder for other comparison statistics - will be implemented based on user requirements
 	await callback.answer("🔧 این بخش در حال توسعه است...", show_alert=True)
+
+
+async def _show_top_successful_transactions(callback: CallbackQuery) -> None:
+	"""Show top 10 users with most successful transactions"""
+	async with get_session() as session:
+		# Query to get users with most successful transactions (paid_at is not null)
+		query = (
+			select(User, func.count(Payment.id).label('successful_count'))
+			.join(Payment, User.id == Payment.user_id)
+			.where(Payment.paid_at.isnot(None))
+			.group_by(User.id)
+			.order_by(desc('successful_count'))
+			.limit(10)
+		)
+		
+		result = await session.execute(query)
+		transactions = result.fetchall()
+	
+	# Format and send the statistics
+	text = get_top_successful_transactions_message(transactions)
+	kb = build_statistics_back_kb()
+	
+	await callback.message.edit_text(
+		text,
+		reply_markup=kb,
+		parse_mode="Markdown"
+	)
+	await callback.answer()
