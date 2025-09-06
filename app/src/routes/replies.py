@@ -1436,6 +1436,97 @@ async def handle_text_reply(message: Message) -> None:
 			await show_bot_settings(message)
 			return
 
+		# Handle cache channel setting step
+		if user and user.step == "bot_settings_cache_channel":
+			# Check if user is admin
+			is_admin = False
+			try:
+				admin_env = os.getenv("TELEGRAM_ADMIN_USER_ID")
+				if user_id and admin_env and str(user_id) == str(admin_env):
+					is_admin = True
+				else:
+					if user_id:
+						from src.databases.admins import Admin
+						exists = await session.scalar(select(Admin.id).where(Admin.user_id == user.id))
+						is_admin = bool(exists)
+			except Exception:
+				is_admin = False
+			
+			if not is_admin:
+				await message.answer("❌ شما دسترسی به این بخش ندارید.")
+				return
+			
+			# Handle back button
+			if text.strip().lower() in ["بازگشت", "back", "لغو", "cancel"]:
+				# Return to admin panel
+				user.step = "admin_panel"
+				await session.commit()
+				from src.context.messages.replies.admin_panel_welcome import get_message as get_admin_message
+				from src.context.keyboards.reply.admin_panel import build_keyboard as build_admin_kb
+				kb, _ = build_admin_kb()
+				await message.answer(get_admin_message(), reply_markup=kb, parse_mode="Markdown")
+				return
+			
+			# Validate and process the new cache channel ID
+			try:
+				# Normalize Persian/Arabic digits
+				from src.middlewares.profile_middleware import _normalize_digits
+				normalized_text = _normalize_digits(text.strip())
+				
+				# Remove any non-digit characters except minus sign
+				cleaned_text = ''.join(c for c in normalized_text if c.isdigit() or c == '-')
+				
+				if not cleaned_text or not cleaned_text.lstrip('-').isdigit():
+					await message.answer(
+						"❌ آیدی کانال نامعتبر است!\n\n"
+						"لطفاً آیدی کانال را به صورت عددی ارسال کنید:\n"
+						"• مثال: -1001234567890\n"
+						"• برای لغو عملیات 'بازگشت' را ارسال کنید"
+					)
+					return
+				
+				new_channel_id = int(cleaned_text)
+				
+				# Update bot settings
+				from src.databases.bot_settings import BotSetting
+				from sqlalchemy import update
+				
+				settings = await session.scalar(select(BotSetting))
+				if settings:
+					await session.execute(
+						update(BotSetting)
+						.where(BotSetting.id == settings.id)
+						.values(cache_channel_id=new_channel_id)
+					)
+					await session.commit()
+					
+					# Reset user step to admin panel
+					user.step = "admin_panel"
+					await session.commit()
+					
+					# Show success message and admin panel
+					await message.answer(
+						f"✅ کانال کش با موفقیت به‌روزرسانی شد!\n\n"
+						f"آیدی کانال جدید: {new_channel_id}",
+						parse_mode="Markdown"
+					)
+					
+					# Show admin panel
+					from src.context.messages.replies.admin_panel_welcome import get_message as get_admin_panel_message
+					from src.context.keyboards.reply.admin_panel import build_keyboard as build_admin_panel_kb
+					kb, _ = build_admin_panel_kb()
+					await message.answer(get_admin_panel_message(), reply_markup=kb, parse_mode="Markdown")
+				else:
+					await message.answer("❌ خطا در یافتن تنظیمات ربات.")
+			except ValueError:
+				await message.answer(
+					"❌ آیدی کانال نامعتبر است!\n\n"
+					"لطفاً آیدی کانال را به صورت عددی ارسال کنید:\n"
+					"• مثال: -1001234567890\n"
+					"• برای لغو عملیات 'بازگشت' را ارسال کنید"
+				)
+			return
+
 		# Handle other admin panel buttons (placeholder for now)
 		if admin_id in ["admin:statistics", "admin:user_management", "admin:chat_management", "admin:financial_management", "admin:reports_management", "admin:pricing_management", "admin:admin_management"]:
 			from src.context.messages.replies.admin_panel_buttons import get_development_message

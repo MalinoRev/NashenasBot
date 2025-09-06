@@ -592,6 +592,10 @@ async def handle_any_callback(callback: CallbackQuery) -> None:
 		from src.handlers.callbacks.bot_settings import handle_bot_settings
 		await handle_bot_settings(callback)
 		return
+	if data.startswith("bot_settings_maintenance:"):
+		from src.handlers.callbacks.bot_settings_maintenance import handle_maintenance_mode_toggle
+		await handle_maintenance_mode_toggle(callback)
+		return
 	await callback.answer()
 	await callback.message.answer("❌ در هنگام پردازش درخواست شما خطایی رخ داد ❌")
 

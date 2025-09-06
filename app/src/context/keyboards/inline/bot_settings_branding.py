@@ -6,7 +6,7 @@ def build_keyboard() -> InlineKeyboardMarkup:
 		inline_keyboard=[
 			[
 				InlineKeyboardButton(text="📝 ویرایش نام ربات", callback_data="bot_settings_branding:name"),
-				InlineKeyboardButton(text="📝 ویرایش توضیحات", callback_data="bot_settings_branding:description")
+				InlineKeyboardButton(text="💾 تنظیم کانال کش", callback_data="bot_settings_branding:cache_channel")
 			],
 			[
 				InlineKeyboardButton(text="📢 تنظیم کانال اصلی", callback_data="bot_settings_branding:main_channel"),
