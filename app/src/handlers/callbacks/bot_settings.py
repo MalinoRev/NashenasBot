@@ -63,7 +63,7 @@ async def handle_bot_settings(callback: CallbackQuery) -> None:
 		except Exception:
 			pass
 		
-		await callback.message.answer(get_branding_message(), reply_markup=build_branding_kb(), parse_mode="Markdown")
+		await callback.message.answer(await get_branding_message(), reply_markup=build_branding_kb(), parse_mode="Markdown")
 		await callback.answer()
 		return
 
