@@ -11,6 +11,78 @@ def _format_currency(amount: int) -> str:
 	return f"{amount:,} تومان"
 
 
+def _get_filter_condition(filter_type: str):
+	"""Get SQLAlchemy condition based on filter type"""
+	if filter_type == "paid":
+		return Payment.paid_at.isnot(None)
+	elif filter_type == "unpaid":
+		return Payment.paid_at.is_(None)
+	else:  # "all"
+		return None
+
+
+def _get_next_filter(current_filter: str) -> str:
+	"""Cycle through filter types: all -> paid -> unpaid -> all"""
+	cycle = ["all", "paid", "unpaid"]
+	try:
+		current_idx = cycle.index(current_filter)
+		return cycle[(current_idx + 1) % len(cycle)]
+	except ValueError:
+		return "all"
+
+
+def _get_filter_display_name(filter_type: str) -> str:
+	"""Get display name for filter type"""
+	if filter_type == "paid":
+		return "پرداخت شده ها"
+	elif filter_type == "unpaid":
+		return "پرداخت نشده ها"
+	else:  # "all"
+		return "همه"
+
+
+async def _show_transactions_page(callback, page: int, filter_type: str) -> None:
+	"""Show transactions page with filter applied"""
+	page_size = 10
+	filter_condition = _get_filter_condition(filter_type)
+	
+	async with get_session() as session:
+		# Build query with filter
+		query = select(Payment).order_by(desc(Payment.id))
+		if filter_condition is not None:
+			query = query.where(filter_condition)
+		
+		# Get items for current page
+		items = list(await session.scalars(
+			query.limit(page_size).offset((page - 1) * page_size)
+		))
+		has_next = len(items) == page_size
+		
+		# Boundary checks
+		from src.context.alerts.search_bounds import get_first_page_message, get_last_page_message
+		if page <= 1 and not items:
+			# No transactions at all
+			filter_text = f" ({_get_filter_display_name(filter_type)})" if filter_type != "all" else ""
+			text = f"هیچ تراکنشی یافت نشد{filter_text}."
+			kb = build_financial_pagination(page=page, has_next=False, page_size=page_size, filter_type=filter_type)
+		elif not items and page > 1:
+			# Trying to go beyond last page
+			await callback.answer(get_last_page_message(), show_alert=True)
+			return
+		else:
+			# Normal case - show items
+			filter_text = f" ({_get_filter_display_name(filter_type)})" if filter_type != "all" else ""
+			header = f"📜 تراکنش‌ها{filter_text} (جدیدترین تا قدیمی‌ترین)\n\n"
+			rows = [ _format_tx_row(p) for p in items ]
+			text = header + "\n".join(rows)
+			kb = build_financial_pagination(page=page, has_next=has_next, page_size=page_size, filter_type=filter_type)
+		
+		try:
+			await callback.message.edit_text(text, reply_markup=kb, parse_mode="Markdown")
+		except Exception:
+			await callback.message.answer(text, reply_markup=kb, parse_mode="Markdown")
+
+
 def _format_tx_row(p: Payment) -> str:
 	paid = p.paid_at.strftime("%Y-%m-%d %H:%M") if p.paid_at else "—"
 	status = "✅ پرداخت شده" if p.paid_at else "❌ ناموفق/لغو"
@@ -33,6 +105,19 @@ async def handle_financial_callbacks(callback: CallbackQuery) -> None:
 		return
 
 	action = data.split(":", 1)[1]
+	
+	# Handle filter toggle
+	if action.startswith("filter_toggle:"):
+		parts = action.split(":")
+		current_filter = parts[1] if len(parts) > 1 else "all"
+		page = int(parts[2]) if len(parts) > 2 else 1
+		next_filter = _get_next_filter(current_filter)
+		
+		# Show transactions with new filter
+		await _show_transactions_page(callback, page, next_filter)
+		await callback.answer()
+		return
+	
 	if action == "stats":
 		# Compute sums for 24h, 7d, 30d over paid payments
 		now = datetime.now(timezone.utc)
@@ -58,36 +143,19 @@ async def handle_financial_callbacks(callback: CallbackQuery) -> None:
 		return
 
 	if action == "transactions":
-		# First page
-		page = 1
-		page_size = 10
-		async with get_session() as session:
-			items = list(await session.scalars(
-				select(Payment).order_by(desc(Payment.id)).limit(page_size).offset((page - 1) * page_size)
-			))
-			total_shown = len(items)
-			has_next = total_shown == page_size
-			if not items:
-				text = "هیچ تراکنشی یافت نشد."
-			else:
-				header = "📜 تراکنش‌ها (جدیدترین تا قدیمی‌ترین)\n\n"
-				rows = [ _format_tx_row(p) for p in items ]
-				text = header + "\n".join(rows)
-			kb = build_financial_pagination(page=page, has_next=has_next, page_size=page_size)
-			try:
-				await callback.message.edit_text(text, reply_markup=kb, parse_mode="Markdown")
-			except Exception:
-				await callback.message.answer(text, reply_markup=kb, parse_mode="Markdown")
+		# First page with default filter
+		await _show_transactions_page(callback, 1, "all")
 		await callback.answer()
 		return
 
 	if data.startswith("financial_page:"):
-		# financial_page:transactions:next:{current_page}
-		# financial_page:transactions:prev:{current_page}
+		# financial_page:transactions:next:{current_page}:{filter_type}
+		# financial_page:transactions:prev:{current_page}:{filter_type}
 		parts = data.split(":")
 		kind = parts[1] if len(parts) > 1 else ""
 		direction = parts[2] if len(parts) > 2 else "next"
 		curr_page_str = parts[3] if len(parts) > 3 else "1"
+		filter_type = parts[4] if len(parts) > 4 else "all"
 		try:
 			curr_page = max(1, int(curr_page_str))
 		except Exception:
@@ -97,45 +165,8 @@ async def handle_financial_callbacks(callback: CallbackQuery) -> None:
 			from src.context.alerts.search_bounds import get_first_page_message
 			await callback.answer(get_first_page_message(), show_alert=True)
 			return
-		page_size = 10
 		
-		async with get_session() as session:
-			items = list(await session.scalars(
-				select(Payment).order_by(desc(Payment.id)).limit(page_size).offset((page - 1) * page_size)
-			))
-			has_next = len(items) == page_size
-			
-			# Boundary checks - only show alerts for invalid navigation
-			from src.context.alerts.search_bounds import get_first_page_message, get_last_page_message
-			if page <= 1 and not items:
-				# No transactions at all
-				text = "هیچ تراکنشی یافت نشد."
-				kb = build_financial_pagination(page=page, has_next=False, page_size=page_size)
-			elif page <= 1 and items:
-				# On first page with items - check if trying to go to page 0
-				if page < 1:
-					await callback.answer(get_first_page_message(), show_alert=True)
-					return
-				# Normal first page
-				header = "📜 تراکنش‌ها (جدیدترین تا قدیمی‌ترین)\n\n"
-				rows = [ _format_tx_row(p) for p in items ]
-				text = header + "\n".join(rows)
-				kb = build_financial_pagination(page=page, has_next=has_next, page_size=page_size)
-			elif not items and page > 1:
-				# Trying to go beyond last page
-				await callback.answer(get_last_page_message(), show_alert=True)
-				return
-			else:
-				# Normal case - show items
-				header = "📜 تراکنش‌ها (جدیدترین تا قدیمی‌ترین)\n\n"
-				rows = [ _format_tx_row(p) for p in items ]
-				text = header + "\n".join(rows)
-				kb = build_financial_pagination(page=page, has_next=has_next, page_size=page_size)
-			
-			try:
-				await callback.message.edit_text(text, reply_markup=kb, parse_mode="Markdown")
-			except Exception:
-				await callback.message.answer(text, reply_markup=kb, parse_mode="Markdown")
+		await _show_transactions_page(callback, page, filter_type)
 		await callback.answer()
 		return
 
