@@ -19,6 +19,10 @@ from src.context.messages.replies.statistics_transactions_opened import get_mess
 from src.context.messages.replies.statistics_referrals import get_message as get_referrals_message
 from src.context.messages.replies.statistics_top_successful_transactions import get_message as get_top_successful_transactions_message
 from src.context.messages.replies.statistics_top_transaction_amounts import get_message as get_top_transaction_amounts_message
+from src.context.messages.replies.statistics_top_direct_senders import get_message as get_top_direct_senders_message
+from src.context.messages.replies.statistics_top_direct_receivers import get_message as get_top_direct_receivers_message
+from src.context.messages.replies.statistics_top_chat_senders import get_message as get_top_chat_senders_message
+from src.context.messages.replies.statistics_top_chat_receivers import get_message as get_top_chat_receivers_message
 from src.context.keyboards.inline.statistics_back import build_keyboard as build_statistics_back_kb
 
 
@@ -333,6 +337,114 @@ async def _show_top_transaction_amounts(callback: CallbackQuery) -> None:
 	await callback.answer()
 
 
+async def _show_top_direct_senders(callback: CallbackQuery) -> None:
+	"""Show top 10 users with most directs sent"""
+	async with get_session() as session:
+		# Query to get users with most directs sent
+		query = (
+			select(User, func.count(Direct.id).label('directs_count'))
+			.join(Direct, User.id == Direct.user_id)
+			.group_by(User.id)
+			.order_by(desc('directs_count'))
+			.limit(10)
+		)
+		
+		result = await session.execute(query)
+		directs = result.fetchall()
+	
+	# Format and send the statistics
+	text = get_top_direct_senders_message(directs)
+	kb = build_statistics_back_kb()
+	
+	await callback.message.edit_text(
+		text,
+		reply_markup=kb,
+		parse_mode="Markdown"
+	)
+	await callback.answer()
+
+
+async def _show_top_direct_receivers(callback: CallbackQuery) -> None:
+	"""Show top 10 users with most directs received"""
+	async with get_session() as session:
+		# Query to get users with most directs received
+		query = (
+			select(User, func.count(Direct.id).label('directs_count'))
+			.join(Direct, User.id == Direct.target_id)
+			.group_by(User.id)
+			.order_by(desc('directs_count'))
+			.limit(10)
+		)
+		
+		result = await session.execute(query)
+		directs = result.fetchall()
+	
+	# Format and send the statistics
+	text = get_top_direct_receivers_message(directs)
+	kb = build_statistics_back_kb()
+	
+	await callback.message.edit_text(
+		text,
+		reply_markup=kb,
+		parse_mode="Markdown"
+	)
+	await callback.answer()
+
+
+async def _show_top_chat_senders(callback: CallbackQuery) -> None:
+	"""Show top 10 users with most chats sent (as user1)"""
+	async with get_session() as session:
+		# Query to get users with most chats sent (as user1)
+		query = (
+			select(User, func.count(Chat.id).label('chats_count'))
+			.join(Chat, User.id == Chat.user1_id)
+			.group_by(User.id)
+			.order_by(desc('chats_count'))
+			.limit(10)
+		)
+		
+		result = await session.execute(query)
+		chats = result.fetchall()
+	
+	# Format and send the statistics
+	text = get_top_chat_senders_message(chats)
+	kb = build_statistics_back_kb()
+	
+	await callback.message.edit_text(
+		text,
+		reply_markup=kb,
+		parse_mode="Markdown"
+	)
+	await callback.answer()
+
+
+async def _show_top_chat_receivers(callback: CallbackQuery) -> None:
+	"""Show top 10 users with most chats received (as user2)"""
+	async with get_session() as session:
+		# Query to get users with most chats received (as user2)
+		query = (
+			select(User, func.count(Chat.id).label('chats_count'))
+			.join(Chat, User.id == Chat.user2_id)
+			.group_by(User.id)
+			.order_by(desc('chats_count'))
+			.limit(10)
+		)
+		
+		result = await session.execute(query)
+		chats = result.fetchall()
+	
+	# Format and send the statistics
+	text = get_top_chat_receivers_message(chats)
+	kb = build_statistics_back_kb()
+	
+	await callback.message.edit_text(
+		text,
+		reply_markup=kb,
+		parse_mode="Markdown"
+	)
+	await callback.answer()
+
+
 async def _handle_comparison_statistics(callback: CallbackQuery, action: str) -> None:
 	"""Handle comparison statistics display"""
 	if action == "top_successful_transactions":
@@ -341,6 +453,22 @@ async def _handle_comparison_statistics(callback: CallbackQuery, action: str) ->
 	
 	if action == "top_transaction_amounts":
 		await _show_top_transaction_amounts(callback)
+		return
+	
+	if action == "top_direct_senders":
+		await _show_top_direct_senders(callback)
+		return
+	
+	if action == "top_direct_receivers":
+		await _show_top_direct_receivers(callback)
+		return
+	
+	if action == "top_chat_senders":
+		await _show_top_chat_senders(callback)
+		return
+	
+	if action == "top_chat_receivers":
+		await _show_top_chat_receivers(callback)
 		return
 	
 	# Placeholder for other comparison statistics - will be implemented based on user requirements
