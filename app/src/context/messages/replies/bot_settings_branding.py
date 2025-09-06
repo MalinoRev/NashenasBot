@@ -14,7 +14,7 @@ async def get_message() -> str:
 	
 	# Format values for display
 	cache_display = str(cache_channel_id) if cache_channel_id else "تنظیم نشده"
-	main_channel_display = main_channel or "تنظیم نشده"
+	main_channel_display = f"@{main_channel}" if main_channel else "تنظیم نشده"
 	support_display = f"@{support_username}" if support_username else "تنظیم نشده"
 	
 	return (
