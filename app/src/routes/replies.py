@@ -1360,6 +1360,135 @@ async def handle_text_reply(message: Message) -> None:
 		await message.answer(get_support_message(supporters_list), reply_markup=build_support_kb(), parse_mode="Markdown")
 		return
 
+	# Handle bot settings steps (name/main/support/cache) and back button
+	from src.core.database import get_session
+	from sqlalchemy import select, update
+	from src.context.keyboards.reply.bot_settings_back import resolve_id_from_text as resolve_bot_back
+	from src.databases.users import User as _UserForBotSettings
+	from src.databases.bot_settings import BotSetting as _BotSetting
+	async with get_session() as session:
+		user: _UserForBotSettings | None = await session.scalar(select(_UserForBotSettings).where(_UserForBotSettings.user_id == (message.from_user.id if message.from_user else 0)))
+		if user and user.step and user.step.startswith("bot_settings_"):
+			# Back button
+			bot_back = resolve_bot_back(text)
+			if bot_back == "bot_settings:back":
+				user.step = "admin_panel"
+				await session.commit()
+				from src.context.messages.replies.admin_panel_welcome import get_message as get_admin_message
+				from src.context.keyboards.reply.admin_panel import build_keyboard as build_admin_kb
+				kb, _ = build_admin_kb()
+				await message.answer(get_admin_message(), reply_markup=kb, parse_mode="Markdown")
+				return
+
+			# Name update
+			if user.step == "bot_settings_bot_name":
+				new_name = text.strip()
+				if not new_name or len(new_name) > 255:
+					await message.answer("❌ نام نامعتبر است. حداکثر 255 کاراکتر و خالی نباشد.")
+					return
+				settings = await session.scalar(select(_BotSetting))
+				if settings:
+					await session.execute(
+						update(_BotSetting).where(_BotSetting.id == settings.id).values(bot_name=new_name)
+					)
+					user.step = "admin_panel"
+					await session.commit()
+					await message.answer("✅ نام ربات با موفقیت به‌روزرسانی شد.")
+					from src.context.messages.replies.admin_panel_welcome import get_message as _get_admin_panel_message
+					from src.context.keyboards.reply.admin_panel import build_keyboard as _build_admin_panel_kb
+					kb, _ = _build_admin_panel_kb()
+					await message.answer(_get_admin_panel_message(), reply_markup=kb, parse_mode="Markdown")
+				else:
+					await message.answer("❌ خطا در یافتن تنظیمات ربات.")
+				return
+
+			# Main channel update
+			if user.step == "bot_settings_main_channel":
+				username = text.strip().lstrip('@')
+				if not username or len(username) < 5 or len(username) > 32 or not all(c.isalnum() or c == '_' for c in username):
+					await message.answer(
+						"❌ نام کاربری کانال نامعتبر است.\n\n"
+						"• طول 5 تا 32 کاراکتر\n"
+						"• فقط حروف، اعداد و _\n"
+					)
+					return
+				settings = await session.scalar(select(_BotSetting))
+				if settings:
+					await session.execute(
+						update(_BotSetting).where(_BotSetting.id == settings.id).values(bot_channel=username)
+					)
+					user.step = "admin_panel"
+					await session.commit()
+					await message.answer("✅ کانال اصلی با موفقیت به‌روزرسانی شد.")
+					from src.context.messages.replies.admin_panel_welcome import get_message as _get_admin_panel_message
+					from src.context.keyboards.reply.admin_panel import build_keyboard as _build_admin_panel_kb
+					kb, _ = _build_admin_panel_kb()
+					await message.answer(_get_admin_panel_message(), reply_markup=kb, parse_mode="Markdown")
+				else:
+					await message.answer("❌ خطا در یافتن تنظیمات ربات.")
+				return
+
+			# Support channel update
+			if user.step == "bot_settings_support_channel":
+				username = text.strip().lstrip('@')
+				if not username or len(username) < 5 or len(username) > 32 or not all(c.isalnum() or c == '_' for c in username):
+					await message.answer(
+						"❌ نام کاربری پشتیبانی نامعتبر است.\n\n"
+						"• طول 5 تا 32 کاراکتر\n"
+						"• فقط حروف، اعداد و _\n"
+					)
+					return
+				settings = await session.scalar(select(_BotSetting))
+				if settings:
+					await session.execute(
+						update(_BotSetting).where(_BotSetting.id == settings.id).values(bot_support_username=username)
+					)
+					user.step = "admin_panel"
+					await session.commit()
+					await message.answer("✅ کانال پشتیبانی با موفقیت به‌روزرسانی شد.")
+					from src.context.messages.replies.admin_panel_welcome import get_message as _get_admin_panel_message
+					from src.context.keyboards.reply.admin_panel import build_keyboard as _build_admin_panel_kb
+					kb, _ = _build_admin_panel_kb()
+					await message.answer(_get_admin_panel_message(), reply_markup=kb, parse_mode="Markdown")
+				else:
+					await message.answer("❌ خطا در یافتن تنظیمات ربات.")
+				return
+
+			# Cache channel update
+			if user.step == "bot_settings_cache_channel":
+				from src.middlewares.profile_middleware import _normalize_digits
+				normalized_text = _normalize_digits(text.strip())
+				cleaned_text = ''.join(c for c in normalized_text if c.isdigit() or c == '-')
+				if not cleaned_text or not cleaned_text.lstrip('-').isdigit():
+					await message.answer(
+						"❌ آیدی کانال نامعتبر است!\n\n"
+						"لطفاً آیدی کانال را به صورت عددی ارسال کنید:\n"
+						"• مثال: -1001234567890\n"
+						"• برای لغو عملیات 'بازگشت' را ارسال کنید"
+					)
+					return
+				new_channel_id = int(cleaned_text)
+				settings = await session.scalar(select(_BotSetting))
+				if settings:
+					await session.execute(
+						update(_BotSetting).where(_BotSetting.id == settings.id).values(cache_channel_id=new_channel_id)
+					)
+					await session.commit()
+					user.step = "admin_panel"
+					await session.commit()
+					await message.answer(
+						f"✅ کانال کش با موفقیت به‌روزرسانی شد!\n\n"
+						f"آیدی کانال جدید: {new_channel_id}",
+						parse_mode="Markdown"
+					)
+					from src.context.messages.replies.admin_panel_welcome import get_message as _get_admin_panel_message
+					from src.context.keyboards.reply.admin_panel import build_keyboard as _build_admin_panel_kb
+					kb, _ = _build_admin_panel_kb()
+					await message.answer(_get_admin_panel_message(), reply_markup=kb, parse_mode="Markdown")
+				else:
+					await message.answer("❌ خطا در یافتن تنظیمات ربات.")
+				return
+
 	# Handle admin panel buttons
 	from src.context.keyboards.reply.admin_panel import resolve_id_from_text as resolve_admin_id
 	admin_id = resolve_admin_id(text)
@@ -1434,6 +1563,107 @@ async def handle_text_reply(message: Message) -> None:
 		if admin_id == "admin:bot_settings":
 			from src.handlers.callbacks.bot_settings_entry import show_bot_settings
 			await show_bot_settings(message)
+			return
+
+		# Handle back button for bot settings steps
+		from src.context.keyboards.reply.bot_settings_back import resolve_id_from_text as resolve_bot_back
+		bot_back = resolve_bot_back(text)
+		if bot_back == "bot_settings:back" and user and user.step and user.step.startswith("bot_settings_"):
+			# Return to admin panel
+			user.step = "admin_panel"
+			await session.commit()
+			from src.context.messages.replies.admin_panel_welcome import get_message as get_admin_message
+			from src.context.keyboards.reply.admin_panel import build_keyboard as build_admin_kb
+			kb, _ = build_admin_kb()
+			await message.answer(get_admin_message(), reply_markup=kb, parse_mode="Markdown")
+			return
+
+		# Handle bot name input
+		if user and user.step == "bot_settings_bot_name":
+			# Simple length validation
+			new_name = text.strip()
+			if not new_name or len(new_name) > 255:
+				await message.answer("❌ نام نامعتبر است. حداکثر 255 کاراکتر و خالی نباشد.")
+				return
+			from src.databases.bot_settings import BotSetting
+			from sqlalchemy import update
+			settings = await session.scalar(select(BotSetting))
+			if settings:
+				await session.execute(
+					update(BotSetting)
+					.where(BotSetting.id == settings.id)
+					.values(bot_name=new_name)
+				)
+				# Reset step and show success
+				user.step = "admin_panel"
+				await session.commit()
+				await message.answer("✅ نام ربات با موفقیت به‌روزرسانی شد.")
+				from src.context.messages.replies.admin_panel_welcome import get_message as get_admin_panel_message
+				from src.context.keyboards.reply.admin_panel import build_keyboard as build_admin_panel_kb
+				kb, _ = build_admin_panel_kb()
+				await message.answer(get_admin_panel_message(), reply_markup=kb, parse_mode="Markdown")
+			else:
+				await message.answer("❌ خطا در یافتن تنظیمات ربات.")
+			return
+
+		# Handle main channel username input
+		if user and user.step == "bot_settings_main_channel":
+			username = text.strip().lstrip('@')
+			if not username or len(username) < 5 or len(username) > 32 or not all(c.isalnum() or c == '_' for c in username):
+				await message.answer(
+					"❌ نام کاربری کانال نامعتبر است.\n\n"
+					"• طول 5 تا 32 کاراکتر\n"
+					"• فقط حروف، اعداد و _\n"
+				)
+				return
+			from src.databases.bot_settings import BotSetting
+			from sqlalchemy import update
+			settings = await session.scalar(select(BotSetting))
+			if settings:
+				await session.execute(
+					update(BotSetting)
+					.where(BotSetting.id == settings.id)
+					.values(bot_channel=username)
+				)
+				user.step = "admin_panel"
+				await session.commit()
+				await message.answer("✅ کانال اصلی با موفقیت به‌روزرسانی شد.")
+				from src.context.messages.replies.admin_panel_welcome import get_message as get_admin_panel_message
+				from src.context.keyboards.reply.admin_panel import build_keyboard as build_admin_panel_kb
+				kb, _ = build_admin_panel_kb()
+				await message.answer(get_admin_panel_message(), reply_markup=kb, parse_mode="Markdown")
+			else:
+				await message.answer("❌ خطا در یافتن تنظیمات ربات.")
+			return
+
+		# Handle support channel username input
+		if user and user.step == "bot_settings_support_channel":
+			username = text.strip().lstrip('@')
+			if not username or len(username) < 5 or len(username) > 32 or not all(c.isalnum() or c == '_' for c in username):
+				await message.answer(
+					"❌ نام کاربری پشتیبانی نامعتبر است.\n\n"
+					"• طول 5 تا 32 کاراکتر\n"
+					"• فقط حروف، اعداد و _\n"
+				)
+				return
+			from src.databases.bot_settings import BotSetting
+			from sqlalchemy import update
+			settings = await session.scalar(select(BotSetting))
+			if settings:
+				await session.execute(
+					update(BotSetting)
+					.where(BotSetting.id == settings.id)
+					.values(bot_support_username=username)
+				)
+				user.step = "admin_panel"
+				await session.commit()
+				await message.answer("✅ کانال پشتیبانی با موفقیت به‌روزرسانی شد.")
+				from src.context.messages.replies.admin_panel_welcome import get_message as get_admin_panel_message
+				from src.context.keyboards.reply.admin_panel import build_keyboard as build_admin_panel_kb
+				kb, _ = build_admin_panel_kb()
+				await message.answer(get_admin_panel_message(), reply_markup=kb, parse_mode="Markdown")
+			else:
+				await message.answer("❌ خطا در یافتن تنظیمات ربات.")
 			return
 
 		# Handle cache channel setting step
