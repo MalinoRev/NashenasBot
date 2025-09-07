@@ -11,6 +11,7 @@ class Report(Base):
 	category_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("report_categories.id"), nullable=True)
 	user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), nullable=False)
 	target_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id"), nullable=False)
+	admin_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("admins.id"), nullable=True)
 	reason: Mapped[str] = mapped_column(String(255), nullable=False)
 	approved_at: Mapped[DateTime | None] = mapped_column(DateTime, nullable=True)
 	rejected_at: Mapped[DateTime | None] = mapped_column(DateTime, nullable=True)
