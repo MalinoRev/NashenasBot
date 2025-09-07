@@ -184,7 +184,40 @@ async def handle_report_actions(callback: CallbackQuery) -> None:
 			)
 			await session.commit()
 			
-			await callback.answer("✅ گزارش تایید شد و کاربر مجازات خواهد شد.", show_alert=True)
+			# Get target user info for punishment prompt
+			target_user = await session.scalar(select(User).where(User.id == report.target_id))
+			if target_user:
+				# Set admin step for punishment input
+				admin_user = await session.scalar(select(User).where(User.user_id == user_id))
+				if admin_user:
+					admin_user.step = f"punish_user:{report.target_id}"
+					await session.commit()
+					
+					# Send punishment prompt message
+					punishment_text = (
+						f"✅ گزارش تایید شد و کاربر مجازات خواهد شد.\n\n"
+						f"👤 <b>کاربر مورد نظر:</b>\n"
+						f"🆔 آیدی: {target_user.user_id}\n"
+						f"📛 نام کاربری: {target_user.tg_name or 'نامشخص'}\n"
+						f"🔗 پروفایل: /user_{target_user.unique_id}\n\n"
+						f"⏰ تعداد روزهای مسدودیت را وارد کنید (1-365):"
+					)
+					
+					# Create reply keyboard with cancel button
+					from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+					kb = ReplyKeyboardMarkup(
+						keyboard=[[KeyboardButton(text="لغو مجازات 🔙")]],
+						resize_keyboard=True,
+						one_time_keyboard=True
+					)
+					
+					try:
+						await callback.message.delete()
+						await callback.message.answer(punishment_text, reply_markup=kb, parse_mode="HTML")
+					except Exception as e:
+						print(f"LOG: Failed to send punishment prompt: {e}")
+			
+			await callback.answer("✅ گزارش تایید شد. حالا تعداد روزهای مسدودیت را وارد کنید.", show_alert=True)
 			
 			# Update the message to show it was approved with punishment
 			try:

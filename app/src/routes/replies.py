@@ -1657,6 +1657,76 @@ async def handle_text_reply(message: Message) -> None:
 			await message.answer(text_start, reply_markup=kb_start, parse_mode="Markdown")
 			return
 
+		# Handle punishment user step (admin punishment flow)
+		if user.step.startswith("punish_user:"):
+			# Back button
+			if text.strip() in ("🔙 بازگشت", "بازگشت 🔙", "لغو مجازات 🔙") or text.strip().lower() in ("بازگشت", "back", "لغو", "cancel"):
+				# Clear step and show admin panel
+				user.step = "admin_panel"
+				await session.commit()
+				from src.context.messages.replies.admin_panel_welcome import get_message as get_admin_panel_message
+				from src.context.keyboards.reply.admin_panel import build_keyboard as build_admin_panel_kb
+				kb, _ = build_admin_panel_kb()
+				await message.answer(get_admin_panel_message(), reply_markup=kb, parse_mode="Markdown")
+				return
+
+			# Validate and process punishment days
+			try:
+				days = int(text.strip())
+				if not (1 <= days <= 365):
+					await message.answer("❌ تعداد روزها باید بین 1 تا 365 باشد. لطفاً مجدداً وارد کنید:")
+					return
+			except ValueError:
+				await message.answer("❌ لطفاً یک عدد معتبر وارد کنید (1-365):")
+				return
+
+			# Get target user ID from step
+			parts = user.step.split(":", 1)
+			target_user_id = int(parts[1]) if len(parts) > 1 else None
+			
+			if target_user_id:
+				# Get target user
+				target_user = await session.scalar(select(User).where(User.id == target_user_id))
+				if target_user:
+					# Create ban record
+					from src.databases.user_bans import UserBan
+					from datetime import datetime, timedelta
+					
+					ban_until = datetime.utcnow() + timedelta(days=days)
+					ban_record = UserBan(
+						user_id=target_user.id,
+						expiry=ban_until
+					)
+					session.add(ban_record)
+					await session.commit()
+					
+					# Send confirmation to admin
+					confirmation_text = (
+						f"✅ کاربر مسدود شد!\n\n"
+						f"👤 <b>کاربر مسدود شده:</b>\n"
+						f"🆔 آیدی: {target_user.user_id}\n"
+						f"📛 نام کاربری: {target_user.tg_name or 'نامشخص'}\n"
+						f"⏰ مدت مسدودیت: {days} روز\n"
+						f"📅 تا تاریخ: {ban_until.strftime('%Y-%m-%d %H:%M')}"
+					)
+					
+					# Clear step and show admin panel
+					user.step = "admin_panel"
+					await session.commit()
+					
+					from src.context.messages.replies.admin_panel_welcome import get_message as get_admin_panel_message
+					from src.context.keyboards.reply.admin_panel import build_keyboard as build_admin_panel_kb
+					kb, _ = build_admin_panel_kb()
+					
+					await message.answer(confirmation_text, reply_markup=kb, parse_mode="HTML")
+					return
+			
+			# If we get here, something went wrong
+			user.step = "admin_panel"
+			await session.commit()
+			await message.answer("❌ خطا در پردازش مجازات. به پنل مدیریت بازگشتید.")
+			return
+
 	# Handle admin panel buttons
 	from src.context.keyboards.reply.admin_panel import resolve_id_from_text as resolve_admin_id
 	admin_id = resolve_admin_id(text)
