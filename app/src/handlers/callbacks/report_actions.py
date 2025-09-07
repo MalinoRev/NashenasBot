@@ -100,6 +100,30 @@ async def handle_report_actions(callback: CallbackQuery) -> None:
 				admin_id = admin_record.id if admin_record else None
 			# For super admin and supporters, admin_id remains None
 			
+			# Get report amount from rewards table
+			from src.databases.rewards import Reward
+			reward_record = await session.scalar(select(Reward))
+			report_amount = reward_record.report_amount if reward_record else 0
+			
+			# Add coins to reporter's credit
+			reporter_user = await session.scalar(select(User).where(User.id == report.user_id))
+			if reporter_user:
+				reporter_user.credit += report_amount
+				await session.commit()
+				
+				# Send confirmation message to reporter
+				try:
+					from aiogram import Bot
+					import os
+					bot = Bot(token=os.getenv("TELEGRAM_BOT_TOKEN"))
+					await bot.send_message(
+						chat_id=reporter_user.user_id,
+						text=f"✅ گزارش شما تایید شد!\n\n💰 {report_amount} سکه به حساب شما اضافه شد.",
+						parse_mode="HTML"
+					)
+				except Exception as e:
+					print(f"LOG: Failed to send confirmation to reporter: {e}")
+			
 			# Update approved_at timestamp and admin_id
 			await session.execute(
 				update(Report)
@@ -127,6 +151,30 @@ async def handle_report_actions(callback: CallbackQuery) -> None:
 				admin_record = await session.scalar(select(Admin).where(Admin.user_id == user_id))
 				admin_id = admin_record.id if admin_record else None
 			# For super admin and supporters, admin_id remains None
+			
+			# Get report amount from rewards table
+			from src.databases.rewards import Reward
+			reward_record = await session.scalar(select(Reward))
+			report_amount = reward_record.report_amount if reward_record else 0
+			
+			# Add coins to reporter's credit
+			reporter_user = await session.scalar(select(User).where(User.id == report.user_id))
+			if reporter_user:
+				reporter_user.credit += report_amount
+				await session.commit()
+				
+				# Send confirmation message to reporter
+				try:
+					from aiogram import Bot
+					import os
+					bot = Bot(token=os.getenv("TELEGRAM_BOT_TOKEN"))
+					await bot.send_message(
+						chat_id=reporter_user.user_id,
+						text=f"✅ گزارش شما تایید شد!\n\n💰 {report_amount} سکه به حساب شما اضافه شد.",
+						parse_mode="HTML"
+					)
+				except Exception as e:
+					print(f"LOG: Failed to send confirmation to reporter: {e}")
 			
 			# Update approved_at timestamp and admin_id
 			await session.execute(

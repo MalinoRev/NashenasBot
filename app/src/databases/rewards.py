@@ -15,6 +15,7 @@ class Reward(Base):
 	id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
 	invite_amount: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
 	profile_amount: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+	report_amount: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
 
 
 

@@ -8,7 +8,11 @@ async def seed_rewards_defaults() -> None:
 	async with get_session() as session:
 		existing = await session.scalar(select(Reward))
 		if existing is None:
-			row = Reward()
+			row = Reward(
+				invite_amount=10,
+				profile_amount=5,
+				report_amount=3
+			)
 			session.add(row)
 			await session.commit()
 
