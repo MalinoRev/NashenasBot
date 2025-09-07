@@ -1545,7 +1545,7 @@ async def handle_text_reply(message: Message) -> None:
 				return
 
 			# Persist report to database
-			from sqlalchemy import insert
+			from sqlalchemy import insert, select
 			from src.databases.reports import Report
 			from datetime import datetime
 
@@ -1573,7 +1573,16 @@ async def handle_text_reply(message: Message) -> None:
 			)
 			user.step = ""
 			await session.commit()
-			await message.answer("✅ گزارش شما ثبت شد و بررسی خواهد شد.")
+			await message.answer("✅ گزارش شما دریافت شد و در حال بررسی است.")
+			# Then show Start message with main buttons
+			from src.context.messages.commands.start import get_message as get_start_message
+			from src.context.keyboards.reply.mainButtons import build_keyboard_for
+			name = None
+			if message.from_user:
+				name = message.from_user.first_name or message.from_user.username or None
+			text_start = await get_start_message(name)
+			kb_start, _ = await build_keyboard_for(message.from_user.id if message.from_user else None)
+			await message.answer(text_start, reply_markup=kb_start, parse_mode="Markdown")
 			return
 
 	# Handle admin panel buttons
