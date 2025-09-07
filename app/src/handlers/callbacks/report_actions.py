@@ -5,6 +5,7 @@ from datetime import datetime
 from src.core.database import get_session
 from src.databases.reports import Report
 from src.databases.users import User
+from src.databases.admins import Admin
 
 
 async def handle_report_actions(callback: CallbackQuery) -> None:
@@ -57,13 +58,25 @@ async def handle_report_actions(callback: CallbackQuery) -> None:
 			await callback.answer("❌ گزارش یافت نشد.", show_alert=True)
 			return
 
+		# Check if report has already been processed (admin_id is not null)
+		if report.admin_id is not None:
+			await callback.answer("❌ قبلاً به این گزارش رسیدگی شده است.", show_alert=True)
+			return
+
 		# Handle different actions
 		if data.startswith("report_reject:"):
-			# Update rejected_at timestamp
+			# Get admin ID for the current user
+			admin_id = None
+			if is_admin:
+				admin_record = await session.scalar(select(Admin).where(Admin.user_id == user_id))
+				admin_id = admin_record.id if admin_record else None
+			# For super admin and supporters, admin_id remains None
+			
+			# Update rejected_at timestamp and admin_id
 			await session.execute(
 				update(Report)
 				.where(Report.id == report_id)
-				.values(rejected_at=datetime.utcnow())
+				.values(rejected_at=datetime.utcnow(), admin_id=admin_id)
 			)
 			await session.commit()
 			
@@ -80,11 +93,18 @@ async def handle_report_actions(callback: CallbackQuery) -> None:
 				pass
 			
 		elif data.startswith("report_approve:"):
-			# Update approved_at timestamp
+			# Get admin ID for the current user
+			admin_id = None
+			if is_admin:
+				admin_record = await session.scalar(select(Admin).where(Admin.user_id == user_id))
+				admin_id = admin_record.id if admin_record else None
+			# For super admin and supporters, admin_id remains None
+			
+			# Update approved_at timestamp and admin_id
 			await session.execute(
 				update(Report)
 				.where(Report.id == report_id)
-				.values(approved_at=datetime.utcnow())
+				.values(approved_at=datetime.utcnow(), admin_id=admin_id)
 			)
 			await session.commit()
 			
@@ -101,11 +121,18 @@ async def handle_report_actions(callback: CallbackQuery) -> None:
 				pass
 			
 		elif data.startswith("report_approve_punish:"):
-			# Update approved_at timestamp
+			# Get admin ID for the current user
+			admin_id = None
+			if is_admin:
+				admin_record = await session.scalar(select(Admin).where(Admin.user_id == user_id))
+				admin_id = admin_record.id if admin_record else None
+			# For super admin and supporters, admin_id remains None
+			
+			# Update approved_at timestamp and admin_id
 			await session.execute(
 				update(Report)
 				.where(Report.id == report_id)
-				.values(approved_at=datetime.utcnow())
+				.values(approved_at=datetime.utcnow(), admin_id=admin_id)
 			)
 			await session.commit()
 			

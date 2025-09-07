@@ -38,6 +38,7 @@ class ProcessingToastMiddleware(BaseMiddleware):
 				"user_management:",
 				"user_page:",
 				"statistics:",
+				"report_",
 			)
 			if not any(data_str.startswith(pref) for pref in skip_prefixes):
 				try:
