@@ -1560,7 +1560,8 @@ async def handle_text_reply(message: Message) -> None:
 				await session.commit()
 				return
 			category_id = None if category_value == "other" else int(category_value)
-			await session.execute(
+			# Insert report and get the ID
+			result = await session.execute(
 				insert(Report).values(
 					category_id=category_id,
 					user_id=user.id,
@@ -1571,9 +1572,97 @@ async def handle_text_reply(message: Message) -> None:
 					created_at=datetime.utcnow(),
 				)
 			)
+			report_id = result.inserted_primary_key[0]
 			user.step = ""
 			await session.commit()
+			
+			# Send confirmation to reporter
 			await message.answer("✅ گزارش شما دریافت شد و در حال بررسی است.")
+			
+			# Send notification to all admins and supporters
+			from src.databases.admins import Admin
+			from src.databases.supporters import Supporter
+			from src.context.messages.notifications.report_notification import get_message as get_notification_message
+			from src.context.keyboards.inline.report_actions import build_keyboard as build_actions_kb
+			
+			# Get reporter and target names
+			reporter_name = message.from_user.first_name or message.from_user.username or "نامشخص"
+			target_name = target.tg_name or "نامشخص"
+			category_name = "سایر موارد" if category_value == "other" else "دسته‌بندی مشخص نشده"
+			
+			# Get category name if not "other"
+			if category_value != "other":
+				from src.databases.report_categories import ReportCategory
+				category_obj = await session.scalar(select(ReportCategory).where(ReportCategory.id == category_id))
+				if category_obj:
+					category_name = category_obj.subject
+			
+			notification_text = get_notification_message(
+				reporter_name=reporter_name,
+				reporter_id=message.from_user.id if message.from_user else 0,
+				target_name=target_name,
+				target_id=target.user_id,
+				target_unique_id=target.unique_id,
+				category=category_name,
+				reason=text.strip()
+			)
+			actions_kb = build_actions_kb(report_id)
+			
+			# Send to super admin from .env
+			import os
+			super_admin_id = os.getenv("TELEGRAM_ADMIN_USER_ID")
+			if super_admin_id:
+				try:
+					await message.bot.send_message(
+						chat_id=int(super_admin_id),
+						text=notification_text,
+						reply_markup=actions_kb,
+						parse_mode="HTML"
+					)
+					print(f"LOG: Report notification sent to super admin {super_admin_id}")
+				except Exception as e:
+					print(f"LOG: Failed to send report notification to super admin {super_admin_id}: {e}")
+			
+			# Send to all admins
+			admin_results = await session.execute(
+				select(Admin, User)
+				.join(User, Admin.user_id == User.id)
+			)
+			for admin, admin_user in admin_results:
+				# Skip if this admin is the same as super admin to avoid duplicate
+				if super_admin_id and str(admin_user.user_id) == str(super_admin_id):
+					continue
+				try:
+					await message.bot.send_message(
+						chat_id=admin_user.user_id,
+						text=notification_text,
+						reply_markup=actions_kb,
+						parse_mode="HTML"
+					)
+					print(f"LOG: Report notification sent to admin {admin_user.user_id}")
+				except Exception as e:
+					print(f"LOG: Failed to send report notification to admin {admin_user.user_id}: {e}")
+			
+			# Send to all supporters
+			supporter_results = await session.execute(
+				select(Supporter, User)
+				.join(User, Supporter.user_id == User.id)
+			)
+			for supporter, supporter_user in supporter_results:
+				# Skip if this supporter is the same as super admin to avoid duplicate
+				if super_admin_id and str(supporter_user.user_id) == str(super_admin_id):
+					continue
+				try:
+					await message.bot.send_message(
+						chat_id=supporter_user.user_id,
+						text=notification_text,
+						reply_markup=actions_kb,
+						parse_mode="HTML"
+					)
+					print(f"LOG: Report notification sent to supporter {supporter_user.user_id}")
+				except Exception as e:
+					print(f"LOG: Failed to send report notification to supporter {supporter_user.user_id}: {e}")
+			
 			# Then show Start message with main buttons
 			from src.context.messages.commands.start import get_message as get_start_message
 			from src.context.keyboards.reply.mainButtons import build_keyboard_for
