@@ -218,23 +218,21 @@ async def handle_text_reply(message: Message) -> None:
 					await message.answer("❌ خطا در کنسل کردن درخواست.")
 
 			# Allow back for several transient steps
-			if user.step not in ("sending_location", "search_sending_location", "search_special_contact") and not user.step.startswith("chat_request_to_"):
+			if user.step in ("sending_location", "search_sending_location", "search_special_contact") or user.step.startswith("chat_request_to_"):
+				user.step = "start"
+				await session.commit()
+
+				# Send the same start message + main keyboard as /start
+				name = (message.from_user.first_name if message.from_user else None) or (message.from_user.username if message.from_user else None)
+				start_text = get_start_message(name)
+				kb, _ = await build_keyboard_for(message.from_user.id if message.from_user else None)
+				await message.answer(
+					start_text,
+					reply_markup=kb,
+					parse_mode="Markdown",
+					link_preview_options=LinkPreviewOptions(is_disabled=True),
+				)
 				return
-
-			user.step = "start"
-			await session.commit()
-
-		# Send the same start message + main keyboard as /start
-		name = (message.from_user.first_name if message.from_user else None) or (message.from_user.username if message.from_user else None)
-		start_text = get_start_message(name)
-		kb, _ = await build_keyboard_for(message.from_user.id if message.from_user else None)
-		await message.answer(
-			start_text,
-			reply_markup=kb,
-			parse_mode="Markdown",
-			link_preview_options=LinkPreviewOptions(is_disabled=True),
-		)
-		return
 
 	# Handle special contact flow input
 	from src.core.database import get_session as _get_session_sc
@@ -1527,6 +1525,55 @@ async def handle_text_reply(message: Message) -> None:
 			# Handle search query
 			from src.handlers.callbacks.user_management import handle_user_search
 			await handle_user_search(message, text.strip())
+			return
+
+		# Handle user profile report write flow (must be before admin panel buttons)
+		if user.step.startswith("report_write:"):
+			# Back button
+			if text.strip() in ("🔙 بازگشت", "بازگشت 🔙") or text.strip().lower() in ("بازگشت", "back", "لغو", "cancel"):
+				# Clear step and show start message with main buttons
+				user.step = ""
+				await session.commit()
+				from src.context.messages.commands.start import get_message as get_start_message
+				from src.context.keyboards.reply.mainButtons import build_keyboard_for
+				name = None
+				if message.from_user:
+					name = message.from_user.first_name or message.from_user.username or None
+				text_start = await get_start_message(name)
+				kb_start, _ = await build_keyboard_for(message.from_user.id if message.from_user else None)
+				await message.answer(text_start, reply_markup=kb_start, parse_mode="Markdown")
+				return
+
+			# Persist report to database
+			from sqlalchemy import insert
+			from src.databases.reports import Report
+			from datetime import datetime
+
+			parts = user.step.split(":", 2)
+			# format: report_write:{unique_id}:{category}
+			_, unique_id, category_value = (parts + ["", ""])[:3]
+			# Resolve viewer and target ids
+			target: User | None = await session.scalar(select(User).where(User.unique_id == unique_id))
+			if not target:
+				await message.answer("❌ کاربر مورد نظر یافت نشد.")
+				user.step = ""
+				await session.commit()
+				return
+			category_id = None if category_value == "other" else int(category_value)
+			await session.execute(
+				insert(Report).values(
+					category_id=category_id,
+					user_id=user.id,
+					target_id=target.id,
+					reason=text.strip(),
+					approved_at=None,
+					rejected_at=None,
+					created_at=datetime.utcnow(),
+				)
+			)
+			user.step = ""
+			await session.commit()
+			await message.answer("✅ گزارش شما ثبت شد و بررسی خواهد شد.")
 			return
 
 	# Handle admin panel buttons
