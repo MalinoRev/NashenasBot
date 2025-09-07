@@ -34,6 +34,10 @@ async def handle_any_callback(callback: CallbackQuery) -> None:
 		from src.handlers.callbacks.visitor_profile_chat_request import handle_visitor_profile_chat_request
 		await handle_visitor_profile_chat_request(callback)
 		return
+	if data.startswith("profile_report:"):
+		from src.handlers.callbacks.visitor_profile_report import handle_visitor_profile_report
+		await handle_visitor_profile_report(callback)
+		return
 	if data.startswith("chat_request_reject:"):
 		from src.handlers.callbacks.chat_request_decisions import handle_chat_request_reject
 		await handle_chat_request_reject(callback)
