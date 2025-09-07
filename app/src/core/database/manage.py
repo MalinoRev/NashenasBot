@@ -88,6 +88,7 @@ async def seed_all() -> None:
 	from src.databases.seeds.rewards import seed_rewards_defaults
 	from src.databases.seeds.products import seed_products_defaults
 	from src.databases.seeds.bot_settings import seed_bot_settings_defaults
+	from src.databases.seeds.report_categories import seed_report_categories_defaults
 
 	await seed_states()
 	await seed_cities_state_1()
@@ -124,6 +125,7 @@ async def seed_all() -> None:
 	await seed_rewards_defaults()
 	await seed_products_defaults()
 	await seed_bot_settings_defaults()
+	await seed_report_categories_defaults()
 
 
 def main() -> None:
