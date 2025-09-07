@@ -1608,60 +1608,43 @@ async def handle_text_reply(message: Message) -> None:
 			)
 			actions_kb = build_actions_kb(report_id)
 			
-			# Send to super admin from .env
+			# Collect all unique notification recipients
 			import os
+			notification_recipients = set()
+			
+			# Add super admin from .env
 			super_admin_id = os.getenv("TELEGRAM_ADMIN_USER_ID")
 			if super_admin_id:
-				try:
-					await message.bot.send_message(
-						chat_id=int(super_admin_id),
-						text=notification_text,
-						reply_markup=actions_kb,
-						parse_mode="HTML"
-					)
-					print(f"LOG: Report notification sent to super admin {super_admin_id}")
-				except Exception as e:
-					print(f"LOG: Failed to send report notification to super admin {super_admin_id}: {e}")
+				notification_recipients.add(int(super_admin_id))
 			
-			# Send to all admins
+			# Add all admins
 			admin_results = await session.execute(
 				select(Admin, User)
 				.join(User, Admin.user_id == User.id)
 			)
 			for admin, admin_user in admin_results:
-				# Skip if this admin is the same as super admin to avoid duplicate
-				if super_admin_id and str(admin_user.user_id) == str(super_admin_id):
-					continue
-				try:
-					await message.bot.send_message(
-						chat_id=admin_user.user_id,
-						text=notification_text,
-						reply_markup=actions_kb,
-						parse_mode="HTML"
-					)
-					print(f"LOG: Report notification sent to admin {admin_user.user_id}")
-				except Exception as e:
-					print(f"LOG: Failed to send report notification to admin {admin_user.user_id}: {e}")
+				notification_recipients.add(admin_user.user_id)
 			
-			# Send to all supporters
+			# Add all supporters
 			supporter_results = await session.execute(
 				select(Supporter, User)
 				.join(User, Supporter.user_id == User.id)
 			)
 			for supporter, supporter_user in supporter_results:
-				# Skip if this supporter is the same as super admin to avoid duplicate
-				if super_admin_id and str(supporter_user.user_id) == str(super_admin_id):
-					continue
+				notification_recipients.add(supporter_user.user_id)
+			
+			# Send notification to each unique recipient
+			for user_id in notification_recipients:
 				try:
 					await message.bot.send_message(
-						chat_id=supporter_user.user_id,
+						chat_id=user_id,
 						text=notification_text,
 						reply_markup=actions_kb,
 						parse_mode="HTML"
 					)
-					print(f"LOG: Report notification sent to supporter {supporter_user.user_id}")
+					print(f"LOG: Report notification sent to user {user_id}")
 				except Exception as e:
-					print(f"LOG: Failed to send report notification to supporter {supporter_user.user_id}: {e}")
+					print(f"LOG: Failed to send report notification to user {user_id}: {e}")
 			
 			# Then show Start message with main buttons
 			from src.context.messages.commands.start import get_message as get_start_message
