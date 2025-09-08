@@ -13,6 +13,7 @@ from src.context.keyboards.reply.mainButtons import build_keyboard as build_main
 from src.context.messages.visitor.profile_view import get_not_found_message, format_caption
 from src.services.user_activity import get_last_activity_string
 from src.context.keyboards.inline.visitor_profile import build_keyboard as build_visitor_kb
+from src.services.profile_visit_service import ProfileVisitService
 
 
 class VisitorMiddleware(BaseMiddleware):
@@ -116,6 +117,12 @@ class VisitorMiddleware(BaseMiddleware):
 			# Send
 			file = FSInputFile(photo_path)
 			await event.answer_photo(file, caption=caption, reply_markup=kb_inline)
+			
+			# Send profile visit notification if visitor is not the same as target
+			if me and me.id != target.id:
+				profile_visit_service = ProfileVisitService(event.bot)
+				await profile_visit_service.send_profile_visit_notification(target.id, me.id)
+			
 			return None
 		# Fallback to next
 		return await handler(event, data)
