@@ -57,7 +57,7 @@ async def handle_text_reply(message: Message) -> None:
 			# Send success + /start
 			await message.answer(get_photo_saved())
 			name = (message.from_user.first_name if message.from_user else None) or (message.from_user.username if message.from_user else None)
-			start_text = get_start_message(name)
+			start_text = await get_start_message(name)
 			kb, _ = await build_keyboard_for(message.from_user.id if message.from_user else None)
 			await message.answer(start_text, reply_markup=kb, parse_mode="Markdown", link_preview_options=LinkPreviewOptions(is_disabled=True))
 			return
@@ -92,7 +92,7 @@ async def handle_text_reply(message: Message) -> None:
 				await message.answer(get_location_saved_success())
 				# Also send /start exactly as elsewhere
 				name = (message.from_user.first_name if message.from_user else None) or (message.from_user.username if message.from_user else None)
-				start_text = get_start_message(name)
+				start_text = await get_start_message(name)
 				kb, _ = await build_keyboard_for(message.from_user.id if message.from_user else None)
 				await message.answer(
 					start_text,
@@ -110,7 +110,7 @@ async def handle_text_reply(message: Message) -> None:
 				await session.commit()
 				# First, send a tiny message to restore main keyboard
 				name = (message.from_user.first_name if message.from_user else None) or (message.from_user.username if message.from_user else None)
-				start_text = get_start_message(name)
+				start_text = await get_start_message(name)
 				kb_main, _ = await build_keyboard_for(message.from_user.id if message.from_user else None)
 				await message.answer("در حال پردازش...", reply_markup=kb_main)
 				# Then show gender keyboard
@@ -142,7 +142,7 @@ async def handle_text_reply(message: Message) -> None:
 			await session.commit()
 		# Send the same start message + main keyboard as /start
 		name = (message.from_user.first_name if message.from_user else None) or (message.from_user.username if message.from_user else None)
-		start_text = get_start_message(name)
+		start_text = await get_start_message(name)
 		kb, _ = await build_keyboard_for(message.from_user.id if message.from_user else None)
 		await message.answer(
 			start_text,
@@ -224,7 +224,7 @@ async def handle_text_reply(message: Message) -> None:
 
 				# Send the same start message + main keyboard as /start
 				name = (message.from_user.first_name if message.from_user else None) or (message.from_user.username if message.from_user else None)
-				start_text = get_start_message(name)
+				start_text = await get_start_message(name)
 				kb, _ = await build_keyboard_for(message.from_user.id if message.from_user else None)
 				await message.answer(
 					start_text,
@@ -1534,8 +1534,6 @@ async def handle_text_reply(message: Message) -> None:
 				# Clear step and show start message with main buttons
 				user.step = ""
 				await session.commit()
-				from src.context.messages.commands.start import get_message as get_start_message
-				from src.context.keyboards.reply.mainButtons import build_keyboard_for
 				name = None
 				if message.from_user:
 					name = message.from_user.first_name or message.from_user.username or None
@@ -1647,8 +1645,6 @@ async def handle_text_reply(message: Message) -> None:
 					print(f"LOG: Failed to send report notification to user {user_id}: {e}")
 			
 			# Then show Start message with main buttons
-			from src.context.messages.commands.start import get_message as get_start_message
-			from src.context.keyboards.reply.mainButtons import build_keyboard_for
 			name = None
 			if message.from_user:
 				name = message.from_user.first_name or message.from_user.username or None
@@ -1673,11 +1669,11 @@ async def handle_text_reply(message: Message) -> None:
 			# Validate and process punishment days
 			try:
 				days = int(text.strip())
-				if not (1 <= days <= 365):
-					await message.answer("❌ تعداد روزها باید بین 1 تا 365 باشد. لطفاً مجدداً وارد کنید:")
+				if days < 0 or days > 365:
+					await message.answer("❌ تعداد روزها باید بین 0 تا 365 باشد. لطفاً مجدداً وارد کنید:")
 					return
 			except ValueError:
-				await message.answer("❌ لطفاً یک عدد معتبر وارد کنید (1-365):")
+				await message.answer("❌ لطفاً یک عدد معتبر وارد کنید (0-365):")
 				return
 
 			# Get target user ID from step
@@ -1688,17 +1684,53 @@ async def handle_text_reply(message: Message) -> None:
 				# Get target user
 				target_user = await session.scalar(select(User).where(User.id == target_user_id))
 				if target_user:
-					# Create ban record
 					from src.databases.user_bans import UserBan
 					from datetime import datetime, timedelta
 					
-					ban_until = datetime.utcnow() + timedelta(days=days)
-					ban_record = UserBan(
-						user_id=target_user.id,
-						expiry=ban_until
+					# Check if user already has an active ban
+					existing_ban = await session.scalar(
+						select(UserBan).where(UserBan.user_id == target_user.id)
 					)
-					session.add(ban_record)
-					await session.commit()
+					
+					if existing_ban:
+						# User already banned, add to existing duration
+						if existing_ban.expiry is None:
+							# Currently permanent ban, keep it permanent
+							ban_until = None
+							ban_duration_text = "همیشگی (مجازات اضافی اعمال شد)"
+						else:
+							# Currently temporary ban, add days to existing expiry
+							if days == 0:
+								# Make permanent
+								ban_until = None
+								ban_duration_text = "همیشگی (مجازات اضافی اعمال شد)"
+							else:
+								# Add days to existing expiry
+								ban_until = existing_ban.expiry + timedelta(days=days)
+								ban_duration_text = f"{days} روز اضافی (مجموع: تا {ban_until.strftime('%Y-%m-%d %H:%M')})"
+						
+						# Update existing ban
+						existing_ban.expiry = ban_until
+						await session.commit()
+						
+					else:
+						# No existing ban, create new one
+						if days == 0:
+							# Permanent ban
+							ban_until = None
+							ban_duration_text = "همیشگی"
+						else:
+							# Temporary ban
+							ban_until = datetime.utcnow() + timedelta(days=days)
+							ban_duration_text = f"{days} روز (تا {ban_until.strftime('%Y-%m-%d %H:%M')})"
+						
+						# Create new ban record
+						ban_record = UserBan(
+							user_id=target_user.id,
+							expiry=ban_until
+						)
+						session.add(ban_record)
+						await session.commit()
 					
 					# Send confirmation to admin
 					confirmation_text = (
@@ -1706,8 +1738,7 @@ async def handle_text_reply(message: Message) -> None:
 						f"👤 <b>کاربر مسدود شده:</b>\n"
 						f"🆔 آیدی: {target_user.user_id}\n"
 						f"📛 نام کاربری: {target_user.tg_name or 'نامشخص'}\n"
-						f"⏰ مدت مسدودیت: {days} روز\n"
-						f"📅 تا تاریخ: {ban_until.strftime('%Y-%m-%d %H:%M')}"
+						f"⏰ مدت مسدودیت: {ban_duration_text}"
 					)
 					
 					# Clear step and show admin panel
@@ -1775,12 +1806,10 @@ async def handle_text_reply(message: Message) -> None:
 					await session.commit()
 			
 			# Send main keyboard
-			from src.context.keyboards.reply.mainButtons import build_keyboard_for
-			from src.context.messages.commands.start import get_message as get_start_message
 			from src.context.messages.commands.panel_exit import get_message as get_exit_message
 			kb, _ = await build_keyboard_for(user_id)
 			name = message.from_user.first_name if message.from_user else None
-			start_text = get_start_message(name)
+			start_text = await get_start_message(name)
 			await message.answer(get_exit_message(), reply_markup=kb, parse_mode="Markdown", link_preview_options=LinkPreviewOptions(is_disabled=True))
 			return
 		

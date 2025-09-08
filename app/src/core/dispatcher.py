@@ -16,6 +16,7 @@ from src.middlewares.visitor_middleware import VisitorMiddleware
 from src.middlewares.chat_forward_middleware import ChatForwardMiddleware
 from src.middlewares.activity_middleware import ActivityMiddleware
 from src.middlewares.referral_middleware import ReferralMiddleware
+from src.middlewares.ban_checker_middleware import BanCheckerMiddleware
 
 
 def build_dispatcher() -> Dispatcher:
@@ -32,12 +33,16 @@ def build_dispatcher() -> Dispatcher:
 	chat_forward = ChatForwardMiddleware()
 	activity = ActivityMiddleware()
 	referral = ReferralMiddleware()
+	ban_checker = BanCheckerMiddleware()
 	# Processing toast must run first
 	dp.message.middleware(processing)
 	dp.callback_query.middleware(processing)
 	# Then auth/link-filter/profile/required-channels
 	dp.message.middleware(auth)
 	dp.callback_query.middleware(auth)
+	# Ban checker runs after auth
+	dp.message.middleware(ban_checker)
+	dp.callback_query.middleware(ban_checker)
 	dp.message.middleware(link_filter)  # Filter links in direct messages and chats
 	dp.message.middleware(profile)
 	dp.callback_query.middleware(profile)

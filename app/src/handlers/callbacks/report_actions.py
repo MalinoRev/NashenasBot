@@ -200,7 +200,8 @@ async def handle_report_actions(callback: CallbackQuery) -> None:
 						f"🆔 آیدی: {target_user.user_id}\n"
 						f"📛 نام کاربری: {target_user.tg_name or 'نامشخص'}\n"
 						f"🔗 پروفایل: /user_{target_user.unique_id}\n\n"
-						f"⏰ تعداد روزهای مسدودیت را وارد کنید (1-365):"
+						f"⏰ تعداد روزهای مسدودیت را وارد کنید (0-365):\n"
+						f"💡 نکته: 0 = مسدودیت همیشگی"
 					)
 					
 					# Create reply keyboard with cancel button
