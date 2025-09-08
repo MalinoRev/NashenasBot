@@ -39,6 +39,7 @@ services:
     build:
       context: .
       dockerfile: docker/mysql/Dockerfile
+    platform: linux/amd64
     container_name: nashenas-mysql
     env_file:
       - .env
