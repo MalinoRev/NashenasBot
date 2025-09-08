@@ -218,3 +218,48 @@ class DirectService:
         except Exception as e:
             print(f"Error sending direct to user: {e}")
             return False
+
+    async def send_read_receipt_to_sender(self, direct_id: int) -> bool:
+        """
+        Send read receipt notification to the sender
+
+        Args:
+            direct_id: Direct message ID
+
+        Returns:
+            bool: True if read receipt sent successfully
+        """
+        try:
+            async with get_session() as session:
+                # Get direct message with sender and receiver info
+                direct = await session.scalar(
+                    select(Direct)
+                    .where(Direct.id == direct_id)
+                    .options(selectinload(Direct.user), selectinload(Direct.target))
+                )
+
+                if not direct or not direct.user or not direct.target:
+                    return False
+
+                # Get sender's telegram ID
+                sender_telegram_id = direct.user.user_id
+                if not sender_telegram_id:
+                    return False
+
+                # Get receiver's name for the message
+                receiver_name = direct.target.tg_name or "کاربر"
+                if direct.target.unique_id:
+                    receiver_name = f"/user_{direct.target.unique_id}"
+
+                # Send read receipt message
+                read_receipt_text = f"✅ {receiver_name} پیام شما را دید"
+                
+                await self.bot.send_message(
+                    chat_id=sender_telegram_id,
+                    text=read_receipt_text
+                )
+                return True
+
+        except Exception as e:
+            print(f"Error sending read receipt: {e}")
+            return False
