@@ -6,6 +6,11 @@ from src.core.database import Base
 
 class Report(Base):
 	__tablename__ = "reports"
+	__table_args__ = {
+		"mysql_engine": "InnoDB",
+		"mysql_charset": "utf8mb4",
+		"mysql_collate": "utf8mb4_unicode_ci",
+	}
 
 	id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
 	category_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("report_categories.id"), nullable=True)
