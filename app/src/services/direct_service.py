@@ -252,7 +252,8 @@ class DirectService:
                     receiver_name = f"/user_{direct.target.unique_id}"
 
                 # Send read receipt message
-                read_receipt_text = f"✅ {receiver_name} پیام شما را دید"
+                from src.context.messages.direct.read_receipt import get_read_receipt_message
+                read_receipt_text = get_read_receipt_message(receiver_name)
                 
                 await self.bot.send_message(
                     chat_id=sender_telegram_id,
