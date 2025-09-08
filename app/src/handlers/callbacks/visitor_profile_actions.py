@@ -11,6 +11,7 @@ from src.databases.user_locations import UserLocation
 from src.context.messages.visitor.profile_view import format_caption
 from src.context.keyboards.inline.visitor_profile import build_keyboard as build_visitor_kb
 from src.services.user_activity import get_last_activity_string
+from src.services.profile_like_service import ProfileLikeService
 
 
 async def _render_profile(callback: CallbackQuery, target: User) -> None:
@@ -122,6 +123,11 @@ async def handle_visitor_profile_action(callback: CallbackQuery) -> None:
 				like = Like(user_id=viewer.id, target_id=target.id)
 				session.add(like)
 				await session.commit()
+				
+				# Send like notification if not liking self
+				if viewer.id != target.id:
+					profile_like_service = ProfileLikeService(callback.message.bot)
+					await profile_like_service.send_profile_like_notification(target.id, viewer.id)
 		elif cmd == "profile_block_toggle":
 			row_id = await session.scalar(select(UserBlocked.id).where(UserBlocked.user_id == viewer.id, UserBlocked.target_id == target.id))
 			if row_id:
