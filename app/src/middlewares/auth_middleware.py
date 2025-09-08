@@ -98,6 +98,19 @@ class AuthMiddleware(BaseMiddleware):
 			async with get_session() as session2:
 				session2.add(new_user)
 				await session2.commit()
+				await session2.refresh(new_user)  # Get the ID after commit
+				
+				# Create default settings for new user
+				default_settings = UserSetting(
+					user_id=new_user.id,
+					silented_until=None,
+					profile_visit_alarm=False,
+					profile_like_alarm=False,
+					can_get_likes=True
+				)
+				session2.add(default_settings)
+				await session2.commit()
+				print(f"LOG: Created user and default settings for new user {new_user.id}")
 		except IntegrityError:
 			# Concurrent create; consider authenticated
 			data["auth_ok"] = True
