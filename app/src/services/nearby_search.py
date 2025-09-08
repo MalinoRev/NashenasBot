@@ -10,6 +10,7 @@ from src.databases.users import User
 from src.databases.user_profiles import UserProfile
 from src.databases.user_locations import UserLocation
 from src.databases.likes import Like
+from src.services.user_activity import get_last_activity_string
 
 
 GenderFilter = Literal["boys", "girls", "all"]
@@ -98,10 +99,12 @@ async def generate_nearby_list(tg_user_id: int, max_km: int, gender: GenderFilte
 				gender_word = "نامشخص"
 			likes = likes_counts.get(u.id, 0)
 			unique_id = u.unique_id or str(u.id)
+			status = await get_last_activity_string(u.id)
 			block_inner = (
 				f"🔸 کاربر {html.escape(str(name))} | {emoji} {gender_word} | سن: {html.escape(str(age))} | {html.escape(str(likes))} ❤️\n"
 				f"🏁 فاصله: {int(round(dist_km))}KM\n"
-				f"👤 پروفایل: /user_{html.escape(str(unique_id))}"
+				f"👤 پروفایل: /user_{html.escape(str(unique_id))}\n"
+				f"آخرین فعالیت: {html.escape(status or 'نامشخص')}"
 			)
 			lines.append(f"<blockquote>{block_inner}</blockquote>")
 
