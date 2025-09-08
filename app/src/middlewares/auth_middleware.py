@@ -9,6 +9,7 @@ from sqlalchemy.exc import IntegrityError
 
 from src.core.database import get_session
 from src.databases.users import User
+from src.databases.user_settings import UserSetting
 from src.context.messages.auth.welcome import get_message as get_welcome_message
 
 
@@ -37,8 +38,23 @@ class AuthMiddleware(BaseMiddleware):
 			return None
 
 		async with get_session() as session:
-			existing_id = await session.scalar(select(User.id).where(User.user_id == user_id))
-			if existing_id:
+			existing_user = await session.scalar(select(User).where(User.user_id == user_id))
+			if existing_user:
+				# Check if user has settings record, create if missing
+				settings = await session.scalar(select(UserSetting).where(UserSetting.user_id == existing_user.id))
+				if not settings:
+					# Create default settings for existing user
+					default_settings = UserSetting(
+						user_id=existing_user.id,
+						silented_until=None,
+						profile_visit_alarm=False,
+						profile_like_alarm=False,
+						can_get_likes=True
+					)
+					session.add(default_settings)
+					await session.commit()
+					print(f"LOG: Created default settings for existing user {existing_user.id}")
+				
 				data["auth_ok"] = True
 				return await handler(event, data)
 
