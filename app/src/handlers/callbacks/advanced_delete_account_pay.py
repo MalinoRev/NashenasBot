@@ -1,5 +1,5 @@
 from pathlib import Path
-from aiogram.types import CallbackQuery, FSInputFile
+from aiogram.types import CallbackQuery, FSInputFile, InlineKeyboardMarkup, InlineKeyboardButton
 
 from src.context.messages.callbacks.coin_gateway_notice import get_caption as get_gateway_caption
 from src.context.messages.callbacks.advanced_delete_account import get_prepare_message
@@ -42,7 +42,13 @@ async def handle_advanced_delete_account_pay(callback: CallbackQuery) -> None:
 		return
 
 	await callback.message.answer(get_link_intro())
-	await callback.message.answer(get_link_message(url), parse_mode="Markdown")
+	
+	# Create inline keyboard with payment link
+	payment_keyboard = InlineKeyboardMarkup(inline_keyboard=[
+		[InlineKeyboardButton(text="🔗 باز پرداخت", url=url)]
+	])
+	
+	await callback.message.answer(get_link_message(url), reply_markup=payment_keyboard, parse_mode="Markdown")
 	await callback.answer()
 
 

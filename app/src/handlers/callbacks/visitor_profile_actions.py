@@ -10,6 +10,7 @@ from src.databases.user_profiles import UserProfile
 from src.databases.user_locations import UserLocation
 from src.context.messages.visitor.profile_view import format_caption
 from src.context.keyboards.inline.visitor_profile import build_keyboard as build_visitor_kb
+from src.services.user_activity import get_last_activity_string
 
 
 async def _render_profile(callback: CallbackQuery, target: User) -> None:
@@ -75,6 +76,7 @@ async def _render_profile(callback: CallbackQuery, target: User) -> None:
 		if not photo_path:
 			photo_path = "src/context/resources/images/noimage-girl.jpg" if (profile and profile.is_female) else "src/context/resources/images/noimage-boy.jpg"
 		# Render
+		last_activity_status = await get_last_activity_string(target.id)
 		caption = format_caption(
 			name=name,
 			gender_text=gender_text,
@@ -83,7 +85,7 @@ async def _render_profile(callback: CallbackQuery, target: User) -> None:
 			age=age,
 			unique_id=target.unique_id or str(target.id),
 			distance_text=distance_str,
-			last_activity=getattr(target, "last_activity", None),
+			last_activity=last_activity_status,
 		)
 		kb_inline = build_visitor_kb(
 			unique_id=target.unique_id or str(target.id),

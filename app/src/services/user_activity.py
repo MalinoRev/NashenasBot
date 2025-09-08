@@ -32,7 +32,7 @@ async def get_last_activity_string(user_id_internal: int) -> str:
 		if not user:
 			return "نامشخص"
 		# If currently chatting, override
-		if getattr(user, "step", None) == "chatting":
+		if user.step == "chatting":
 			return "در حال چت"
 		last: datetime | None = getattr(user, "last_activity", None)
 		if not last:

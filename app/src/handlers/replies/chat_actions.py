@@ -17,6 +17,7 @@ from src.databases.states import State
 from src.databases.cities import City
 from src.context.messages.visitor.profile_view import format_caption as visitor_format_caption
 from src.context.keyboards.inline.visitor_profile import build_keyboard as build_visitor_kb
+from src.services.user_activity import get_last_activity_string
 from pathlib import Path
 
 
@@ -83,6 +84,7 @@ async def handle_chat_action(message: Message) -> None:
 					break
 			if not photo_path:
 				photo_path = "src/context/resources/images/noimage-girl.jpg" if (profile and profile.is_female) else "src/context/resources/images/noimage-boy.jpg"
+			last_activity_status = await get_last_activity_string(partner.id)
 			caption = visitor_format_caption(
 				name=name,
 				gender_text=gender_text,
@@ -91,7 +93,7 @@ async def handle_chat_action(message: Message) -> None:
 				age=age,
 				unique_id=partner.unique_id or str(partner.id),
 				distance_text=distance_str,
-				last_activity=getattr(partner, "last_activity", None),
+				last_activity=last_activity_status,
 			)
 			kb_inline = build_visitor_kb(
 				unique_id=partner.unique_id or str(partner.id),

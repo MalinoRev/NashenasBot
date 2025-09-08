@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from aiogram.types import CallbackQuery, FSInputFile
+from aiogram.types import CallbackQuery, FSInputFile, InlineKeyboardMarkup, InlineKeyboardButton
 from sqlalchemy import select
 
 from src.core.database import get_session
@@ -61,7 +61,13 @@ async def handle_coin_buy(callback: CallbackQuery) -> None:
 		return
 
 	await callback.message.answer(get_intro_message())
-	await callback.message.answer(get_link_message(url), parse_mode="Markdown")
+	
+	# Create inline keyboard with payment link
+	payment_keyboard = InlineKeyboardMarkup(inline_keyboard=[
+		[InlineKeyboardButton(text="🔗 باز پرداخت", url=url)]
+	])
+	
+	await callback.message.answer(get_link_message(url), reply_markup=payment_keyboard, parse_mode="Markdown")
 	await callback.answer()
 
 
