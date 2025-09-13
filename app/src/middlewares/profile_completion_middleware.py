@@ -13,6 +13,7 @@ from src.context.messages.rewards.profile_completion_success import (
 	format_message as format_reward_message,
 )
 from pathlib import Path
+from src.databases.user_locations import UserLocation
 
 
 class ProfileCompletionMiddleware(BaseMiddleware):
@@ -73,6 +74,11 @@ class ProfileCompletionMiddleware(BaseMiddleware):
 					avatar_ok = True
 					break
 			if not avatar_ok:
+				return await handler(event, data)
+
+			# Extra condition: user must have a saved location
+			location_row = await session.scalar(select(UserLocation.id).where(UserLocation.user_id == user.id))
+			if not location_row:
 				return await handler(event, data)
 
 			# Check if user has already received the profile completion reward
