@@ -198,6 +198,10 @@ async def handle_any_callback(callback: CallbackQuery) -> None:
 		from src.handlers.callbacks.profile_edit_photo import handle_profile_edit_photo
 		await handle_profile_edit_photo(callback)
 		return
+	if data == "profile_completion:start":
+		from src.handlers.callbacks.profile_completion import handle_profile_completion
+		await handle_profile_completion(callback)
+		return
 	if data == "profile_edit_photo:cancel":
 		from src.handlers.callbacks.profile_edit_photo_cancel import handle_profile_edit_photo_cancel
 		await handle_profile_edit_photo_cancel(callback)

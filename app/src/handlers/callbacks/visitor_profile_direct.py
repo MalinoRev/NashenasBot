@@ -27,22 +27,21 @@ async def handle_visitor_profile_direct(callback: CallbackQuery) -> None:
 		age = str(profile.age) if profile and profile.age is not None else "?"
 
 	if data.startswith("profile_direct:"):
-		# Show intro with cost and confirm button
-		# Check viewer step must be start
+		# Skip intro; directly set step and prompt for message
 		viewer_id = callback.from_user.id if callback.from_user else 0
 		async with get_session() as session2:
 			viewer: User | None = await session2.scalar(select(User).where(User.user_id == viewer_id))
 			if not viewer or getattr(viewer, "step", "start") != "start":
 				await callback.answer(get_direct_not_allowed(), show_alert=True)
 				return
+			viewer.step = f"direct_to_{target.id}"
+			await session2.commit()
 		try:
 			await callback.message.delete()
 		except Exception:
 			pass
-		await callback.message.answer(
-			get_direct_intro(name=name, gender_text=gender_text, age=age, unique_id=unique_id),
-			reply_markup=build_direct_confirm_kb(unique_id),
-		)
+		kb_back, _ = build_back_kb()
+		await callback.message.answer(get_direct_prompt(), reply_markup=kb_back)
 		await callback.answer()
 		return
 

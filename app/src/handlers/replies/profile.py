@@ -11,6 +11,9 @@ from src.databases.cities import City
 from src.context.messages.replies.profile import format_profile_caption
 from src.services.user_activity import get_last_activity_string
 from src.context.keyboards.inline.profile import build_profile_keyboard
+from src.databases.user_locations import UserLocation
+from src.context.messages.replies.profile_completion_reminder import get_message as get_completion_reminder
+from src.databases.rewards import Reward
 
 
 async def handle_profile(user_id: int) -> dict:
@@ -73,7 +76,35 @@ async def handle_profile(user_id: int) -> dict:
 		if not photo_path:
 			photo_path = "src/context/resources/images/noimage-girl.jpg" if (profile and profile.is_female) else "src/context/resources/images/noimage-boy.jpg"
 		keyboard = build_profile_keyboard(is_like_active=bool(getattr(user, "can_get_likes", True)))
-		return {"photo_path": photo_path, "caption": caption, "reply_markup": keyboard}
+
+		# Completion reminder: check for missing photo and location
+		missing_steps = 0
+		# 1) Photo: consider custom avatar exists if photo_path points to custom file
+		custom_photo_exists = False
+		try:
+			# If resolved path is under storage avatars and not default noimage
+			custom_photo_exists = (
+				photo_path is not None
+				and ("noimage-girl.jpg" not in str(photo_path))
+				and ("noimage-boy.jpg" not in str(photo_path))
+			)
+		except Exception:
+			custom_photo_exists = False
+		if not custom_photo_exists:
+			missing_steps += 1
+		# 2) Location: exists if a row present in user_locations
+		location_exists = bool(await session.scalar(select(func.count()).select_from(UserLocation).where(UserLocation.user_id == user.id)))
+		if not location_exists:
+			missing_steps += 1
+
+		reminder_text = None
+		if missing_steps > 0:
+			# Fetch referral/profile completion reward amount
+			reward: Reward | None = await session.scalar(select(Reward))
+			reward_amount = int(getattr(reward, "profile_amount", 0)) if reward else 0
+			reminder_text = get_completion_reminder(missing_steps, reward_amount)
+
+		return {"photo_path": photo_path, "caption": caption, "reply_markup": keyboard, "reminder_text": reminder_text}
 
 
 

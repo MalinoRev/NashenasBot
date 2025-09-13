@@ -380,6 +380,10 @@ async def handle_text_reply(message: Message) -> None:
 		if photo_path and caption:
 			photo = FSInputFile(photo_path)
 			await message.answer_photo(photo, caption=caption, reply_markup=kb_inline)
+			# Optional reminder if profile is incomplete (photo/location)
+			if result.get("reminder_text"):
+				from src.context.keyboards.inline.profile_completion import build_keyboard as _build_comp_kb
+				await message.answer(result.get("reminder_text"), reply_markup=_build_comp_kb())
 		return
 
 	if main_id == "main:invite":
