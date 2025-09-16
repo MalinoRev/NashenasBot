@@ -1536,7 +1536,7 @@ async def handle_text_reply(message: Message) -> None:
 			# Back button
 			if text.strip() in ("🔙 بازگشت", "بازگشت 🔙") or text.strip().lower() in ("بازگشت", "back", "لغو", "cancel"):
 				# Clear step and show start message with main buttons
-				user.step = ""
+				user.step = "start"
 				await session.commit()
 				name = None
 				if message.from_user:
@@ -1558,7 +1558,7 @@ async def handle_text_reply(message: Message) -> None:
 			target: User | None = await session.scalar(select(User).where(User.unique_id == unique_id))
 			if not target:
 				await message.answer("❌ کاربر مورد نظر یافت نشد.")
-				user.step = ""
+				user.step = "start"
 				await session.commit()
 				return
 			category_id = None if category_value == "other" else int(category_value)
@@ -1575,7 +1575,7 @@ async def handle_text_reply(message: Message) -> None:
 				)
 			)
 			report_id = result.inserted_primary_key[0]
-			user.step = ""
+			user.step = "start"
 			await session.commit()
 			
 			# Send confirmation to reporter
